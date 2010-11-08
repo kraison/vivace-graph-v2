@@ -49,8 +49,8 @@ To get you started:
 (create-triple-store "test store 2" "/var/tmp/")
 (load-triples "/var/tmp/triples.dmp")
 (select (?x ?y) (q- "likes" ?x ?y))
-(get-triples :s "Kevin")
-(get-triples :p "is-a")
+(get-triples-list :s "Kevin")
+(get-triples-list :p "is-a")
 (close-triple-store :store *store*)
 
 
