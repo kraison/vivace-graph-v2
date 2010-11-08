@@ -5,13 +5,13 @@ it to behave consistently from one check-in to another.
 
 The goal is to build a fast, robust, distributed graph database with optional
 RDF semantics built-in.  The primary query language is Prolog (based on PAIP),
-but I have plans to add Javascript and maybe Sparql at a later date.  At the
-moment, the underlying storage engine relies on Kyoto Cabinet;  this is going
+but I have plans to add Javascript and maybe Sparql at a later date.  
+At the moment, persistence is achieved via a call to (dump-triples);  this is going
 to change very soon.  I am working on a native SBCL memory mapped persistence
 library that will give me some variation on btrees and hashes.  When this is
-complete, the current performance issues with Vivace Graph should disappear.
+complete, triples wil be persistent by default.
 
-The code checked-in as of 2010/09/30 works fairly well, but should be
+The code checked-in as of 2010/11/08 works fairly well, but should be
 considered alpha quality.  In order to get it working, you will need the
 following:
 
