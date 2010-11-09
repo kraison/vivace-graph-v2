@@ -90,14 +90,15 @@
 (defun open-triple-store (&key location host port user password)
   (declare (ignore location host port user password)))
 
+(defun clear-triple-store (&optional (store *store*))
+  (setq *store* (make-fresh-store *graph* (location store))))
+  
+(defun use-graph (name)
+  (setq *graph* name))
+
 (defun add-to-index-queue (thing &optional (store *store*))
   (sb-concurrency:enqueue thing (index-queue store)))
 
 (defun add-to-delete-queue (thing &optional (store *store*))
   (sb-concurrency:enqueue thing (delete-queue store)))
 
-(defun clear-triple-store (&optional (store *store*))
-  (setq *store* (make-fresh-store *graph* (location store))))
-  
-(defun use-graph (name)
-  (setq *graph* name))

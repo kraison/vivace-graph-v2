@@ -158,10 +158,10 @@
   "This needs to be updated to a cursor-based retrieval engine when we have persistent
 storage."
   (cond ((and g s p o)
-	 (if (and (consp o) (eq (first o) '-o))
+	 (if (consp o)
 	     (get-index-range (text-idx store) 
-			      (make-text-idx-key g s p (nth 1 o))
-			      (make-text-idx-key g s p (nth 2 o)))
+			      (make-text-idx-key g s p (nth 0 o))
+			      (make-text-idx-key g s p (nth 1 o)))
 	     (get-from-index (gspoi-idx store) g s p o)))
 	((and g p s)
 	 (get-from-index (gspoi-idx store) g s p))
