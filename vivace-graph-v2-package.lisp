@@ -47,9 +47,11 @@
 	   #:add-triple
 	   #:get-triples
 	   #:get-triples-list
+	   #:-o
 	   #:lookup-triple
 	   #:bulk-add-triples
 	   #:index-predicate?
+	   #:list-indexed-predicates
 	   #:index-predicate
 	   #:unindex-predicate
 	   #:map-text-search

@@ -60,6 +60,9 @@
 (defmethod belief-factor ((triple triple))
   (triple-cf triple))
 
+(defmethod persistent? ((triple triple))
+  (triple-persistent? triple))
+
 (defun index-predicate (name-string)
   (setf (gethash name-string (indexed-predicates *store*)) t))
 	
@@ -83,8 +86,8 @@
 		  triple)
 		triple))))))
 
-(defun add-to-text-index (triple)
-  (skip-list-add (text-idx *store*) (object triple) (id triple)))
+(defun make-text-idx-key (g s p o)
+  (string-downcase (format nil "~A~A~A~A~A~A~A" g #\Nul s #\Nul p #\Nul o)))
 
 (defun index-triple (triple &optional (store *store*))
   (prog1
@@ -102,7 +105,10 @@
     (add-to-index (gospi-idx store) (id triple) 
 		  (graph triple) (object triple) (subject triple) (predicate triple))
     (when (index-predicate? (predicate triple))
-      (add-to-text-index triple))))
+      (add-to-text-index (text-idx *store*)
+			 (make-text-idx-key (graph triple) (subject triple) 
+					    (predicate triple) (object triple))
+			 (id triple)))))
 
 (defun do-indexing (&optional (store *store*))
   (loop for triple = (sb-concurrency:dequeue (index-queue store)) do
@@ -123,7 +129,7 @@
   ;;(add-to-delete-queue triple)))
 
 (defun add-triple (subject predicate object &key (graph *graph*) (index-immediate? t) 
-		   cf)
+		   cf (persistent? t))
   (or (let ((triple 
 	     (lookup-triple subject predicate object graph :retrieve-deleted? t)))
 	(when (triple? triple)
@@ -138,6 +144,7 @@
 				   :object object 
 				   :graph graph
 				   :cf (or cf +cf-true+)
+				   :persistent? persistent?
 				   :id id)))
 	  (if index-immediate?
 	      (index-triple triple *store*)
@@ -151,7 +158,11 @@
   "This needs to be updated to a cursor-based retrieval engine when we have persistent
 storage."
   (cond ((and g s p o)
-	 (get-from-index (gspoi-idx store) g s p o))
+	 (if (and (consp o) (eq (first o) '-o))
+	     (get-index-range (text-idx store) 
+			      (make-text-idx-key g s p (nth 1 o))
+			      (make-text-idx-key g s p (nth 2 o)))
+	     (get-from-index (gspoi-idx store) g s p o)))
 	((and g p s)
 	 (get-from-index (gspoi-idx store) g s p))
 	((and g p o)
@@ -162,7 +173,7 @@ storage."
 	 (get-from-index (gspoi-idx store) g s))
 	((and g o)
 	 (get-from-index (gospi-idx store) g o))
-	(t (error "Other combinations to be implemented later."))))
+	(t (error "Other combinations of spog to be implemented later."))))
 
 (defun get-triples-list (&key s p o (g *graph*) (store *store*) retrieve-deleted? 
 			 limit)
@@ -199,6 +210,7 @@ storage."
 			     :graph graph
 			     :cf cf
 			     :id id
+			     :persistent? t
 			     :deleted? deleted?)))
     (enqueue-triple-for-indexing triple)
     triple))
@@ -209,15 +221,16 @@ storage."
 			  :if-exists :supersede
 			  :if-does-not-exist :create)
     (maphash #'(lambda (id triple)
-		 (write `(,(subject triple)
-			   ,(predicate triple)
-			   ,(object triple)
-			   ,(format nil "~A" id)
-			   ,(graph triple)
-			   ,(cf triple)
-			   ,(deleted? triple))
+		 (when (persistent? triple)
+		   (write `(,(subject triple)
+			     ,(predicate triple)
+			     ,(object triple)
+			     ,(format nil "~A" id)
+			     ,(graph triple)
+			     ,(cf triple)
+			     ,(deleted? triple))
 			:stream stream :pretty nil)
-		 (format stream "~%"))
+		   (format stream "~%")))
 	     (id-idx store))))
 
 (defun load-triples (file)

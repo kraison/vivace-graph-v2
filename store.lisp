@@ -32,6 +32,11 @@
 (defun index-predicate? (name)
   (gethash name (indexed-predicates *store*)))
 
+(defun list-indexed-predicates (&optional (store *store*))
+  (let ((result nil))
+    (maphash #'(lambda (k v) (when v (push k result))) (indexed-predicates store))
+    (sort result #'string>)))
+
 (defun make-fresh-store (name location)
   (make-instance 'local-triple-store
 		 :name name
