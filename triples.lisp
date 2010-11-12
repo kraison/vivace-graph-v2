@@ -72,9 +72,36 @@
 (defmethod make-anonymous-node-name ((uuid uuid:uuid))
   (format nil "_anon:~A" uuid))
 
+(defun set-triple-cf (triple new-value)
+  (cas (triple-cf triple) (triple-cf triple) new-value))
+
 (defun make-anonymous-node ()
   "Create a unique anonymous node."
   (format nil "_anon:~A" (make-uuid)))
+
+(let ((regex 
+       "^_anon\:[0-9abcdefABCEDF]{8}\-[0-9abcdefABCEDF]{4}\-[0-9abcdefABCEDF]{4}\-[0-9abcdefABCEDF]{4}\-[0-9abcdefABCEDF]{12}$"))
+  (defun anonymous? (node)
+    (cl-ppcre:scan regex node)))
+
+(defmethod reify (node)
+  (declare (special node))
+  (select (?p ?o)
+	  (lisp ?s node)
+	  (q- ?s ?p ?o)))
+
+(defun reify-recursive (node &key (max-levels 2) (level 0))
+  (unless (>= level max-levels)
+    (let ((relations (reify node)))
+      (list node
+	    (mapcar #'(lambda (relation)
+			(if (anonymous? (second relation))
+			    (list relation 
+				  (reify-recursive (second relation)
+						   :max-levels max-levels
+						   :level (1+ level)))
+			    relation))
+		    relations)))))
 
 (defun lookup-triple (subject predicate object graph &key retrieve-deleted?)
   (let ((cursor (get-from-index (gspoi-idx *store*) graph subject predicate object)))
@@ -155,8 +182,7 @@
   (gethash id (id-idx store)))
 
 (defun get-triples (&key s p o (g *graph*) (store *store*))
-  "This needs to be updated to a cursor-based retrieval engine when we have persistent
-storage."
+  "Returns a cursor to the results."
   (cond ((and g s p o)
 	 (if (consp o)
 	     (get-index-range (text-idx store) 
@@ -173,7 +199,16 @@ storage."
 	 (get-from-index (gspoi-idx store) g s))
 	((and g o)
 	 (get-from-index (gospi-idx store) g o))
-	(t (error "Other combinations of spog to be implemented later."))))
+	(g
+	 (get-from-index (gospi-idx store) g))
+	(s
+	 (get-from-index (spogi-idx store) s))
+	(o
+	 (get-from-index (ospgi-idx store) o))
+	(p
+	 (get-from-index (posgi-idx store) p))
+	(t 
+	 (error "Other combinations of spogi to be implemented later."))))
 
 (defun get-triples-list (&key s p o (g *graph*) (store *store*) retrieve-deleted? 
 			 limit)
@@ -220,18 +255,19 @@ storage."
 			  :direction :output 
 			  :if-exists :supersede
 			  :if-does-not-exist :create)
-    (maphash #'(lambda (id triple)
-		 (when (persistent? triple)
-		   (write `(,(subject triple)
-			     ,(predicate triple)
-			     ,(object triple)
-			     ,(format nil "~A" id)
-			     ,(graph triple)
-			     ,(cf triple)
-			     ,(deleted? triple))
-			:stream stream :pretty nil)
-		   (format stream "~%")))
-	     (id-idx store))))
+    (sb-ext:with-locked-hash-table ((id-idx store))
+      (maphash #'(lambda (id triple)
+		   (when (persistent? triple)
+		     (write `(,(subject triple)
+			       ,(predicate triple)
+			       ,(object triple)
+			       ,(format nil "~A" id)
+			       ,(graph triple)
+			       ,(cf triple)
+			       ,(deleted? triple))
+			    :stream stream :pretty nil)
+		     (format stream "~%")))
+	       (id-idx store)))))
 
 (defun load-triples (file)
   (with-open-file (stream file)
@@ -254,3 +290,36 @@ storage."
 	(error (condition)
 	  (format t "Error loading triples: ~A / ~A~%" 
 		  (type-of condition) condition))))))
+
+#|
+(defmethod deserialize-help ((become (eql +triple+)) bytes)
+  "Decode a triple."
+  (declare (optimize (speed 3)))
+  (declare (type (simple-array (unsigned-byte 8)) bytes))
+  (declare (type integer become))
+  (destructuring-bind (subject predicate object belief id timestamp derived? deleted?)
+      (extract-all-subseqs bytes)
+    (declare (type (simple-array (unsigned-byte 8))
+                   subject predicate object belief id timestamp derived? deleted?))
+    (make-triple
+     :uuid (deserialize id)
+     :belief-factor (deserialize belief)
+     :derived? (deserialize derived?)
+     :subject (lookup-node subject *graph* t)
+     :predicate (lookup-predicate predicate *graph*)
+     :deleted? (deserialize deleted?)
+     :timestamp (deserialize timestamp)
+     :object (lookup-node object *graph* t))))
+
+(defmethod serialize ((triple triple))
+  "Encode a triple for storage."
+  (serialize-multiple +triple+
+                      (node-value (triple-subject triple))
+                      (make-serialized-key (triple-predicate triple))
+                      (node-value (triple-object triple))
+                      (triple-belief-factor triple)
+                      (triple-uuid triple)
+                      (triple-timestamp triple)
+                      (triple-derived? triple)
+                      (triple-deleted? triple)))
+|#

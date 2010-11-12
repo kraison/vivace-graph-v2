@@ -59,6 +59,9 @@
 	   #:erase-triple
 	   #:dump-triples
 	   #:load-triples
+	   #:reify
+	   #:reify-recursive
+	   #:anonymous?
 
 	   #:rule?
 	   #:defrule
@@ -67,6 +70,19 @@
 	   #:deftemplate
 	   #:fact
 	   #:deffacts
+
+	   #:certainty-factor-p
+	   #:belief-factor
+	   #:true-p
+	   #:false-p
+	   #:unknown-p
+	   #:cf-or
+	   #:cf-and
+	   #:cf-combine
+	   #:conjunct-cf
+	   #:recalculate-cf
+	   #:adjust-belief
+	   #:set-triple-cf
 
 	   #:!
 	   #:<-
@@ -77,9 +93,8 @@
 	   #:insert
 	   #:select
 	   #:select-flat
-	   #:select-bind-list
-	   #:do-query
-	   #:exec-rule
+	   #:select-first
+	   #:select-one
 	   #:read/1
 	   #:wrte/1
 	   #:nl/0

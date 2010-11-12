@@ -2,6 +2,22 @@
 
 (defstruct index-cursor index vector pointer)
 
+(defgeneric idx-equal (a b)
+  (:method ((a string) (b string)) (string= a b))
+  (:method ((a number) (b number)) (= a b))
+  (:method ((a symbol) (b symbol)) (eq a b))
+  (:method ((a vector) (b vector))
+    (when (= (length a) (length b))
+      (every #'idx-equal a b)))
+  (:method (a b) (equal a b)))
+
+(defun sxhash-idx (item) (sxhash item))
+
+(sb-ext:define-hash-table-test idx-equal sxhash-idx)
+
+;(defun make-idx-table (&key synchronized)
+;  (make-hash-table :test 'idx-equal :synchronized synchronized))
+
 (defun cursor-value (cursor &key (transform-fn #'identity))
   (handler-case
       (funcall transform-fn
@@ -13,7 +29,8 @@
 (defun cursor-next (cursor &key (transform-fn #'identity))
   (handler-case
       (funcall transform-fn
-	       (aref (index-cursor-vector cursor) (incf (index-cursor-pointer cursor))))
+	       (aref (index-cursor-vector cursor) 
+		     (incf (index-cursor-pointer cursor))))
     (SB-INT:INVALID-ARRAY-INDEX-ERROR (condition)
       (declare (ignore condition))
       (decf (index-cursor-pointer cursor))
@@ -22,7 +39,8 @@
 (defun cursor-prev (cursor &key (transform-fn #'identity))
   (handler-case
       (funcall transform-fn 
-	       (aref (index-cursor-vector cursor) (decf (index-cursor-pointer cursor))))
+	       (aref (index-cursor-vector cursor) 
+		     (decf (index-cursor-pointer cursor))))
     (SB-INT:INVALID-ARRAY-INDEX-ERROR (condition)
       (declare (ignore condition))
       (incf (index-cursor-pointer cursor))
@@ -44,7 +62,7 @@
   
 (defstruct index name table test)
 
-(defun make-hierarchical-index (&key name (test 'equal))
+(defun make-hierarchical-index (&key name (test 'idx-equal))
   (make-index :name name
 	      :test test
 	      :table (make-hash-table :test test :synchronized t)))

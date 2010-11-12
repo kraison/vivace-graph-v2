@@ -543,6 +543,12 @@ types that will be stored in the db.")
 (defmacro select-flat (vars &rest goals)
   `(flatten (select ,vars ,@goals)))
 
+(defmacro select-first (vars &rest goals)
+  `(first (select ,vars ,@goals !)))
+
+(defmacro select-one (vars &rest goals)
+  `(first (flatten (select ,vars ,@goals !))))
+
 #|
 (defmacro do-query (&rest goals)
   "Execute a prolog query, ignoring the results."
