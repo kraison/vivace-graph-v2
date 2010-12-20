@@ -10,11 +10,11 @@
 
 (defun make-functor (&key name clauses)
   (or (lookup-functor name)
-      (let ((functor (%make-functor :name name
-				    :clauses clauses)))
-	(prog1
-	    (setf (gethash name *user-functors*) functor)
-	  (prolog-compile functor)))))
+      (let ((functor (%make-functor :name name :clauses clauses)))
+	(with-recursive-lock-held ((functor-lock functor))
+	  (prog1
+	      (setf (gethash name *user-functors*) functor)
+	    (prolog-compile functor))))))
 
 (defun add-functor-clause (functor clause)
   (with-recursive-lock-held ((functor-lock functor))
@@ -40,7 +40,8 @@
 
 (defun set-functor-fn (functor-symbol fn)
   (let ((f (lookup-functor functor-symbol)))
-    ;;(when *prolog-trace* (format t "set-functor-fn for ~A got ~A~%" functor-symbol f))
+    (when *prolog-trace* 
+      (format t "TRACE: set-functor-fn for ~A got ~A~%" functor-symbol f))
     (if (functor? f)
 	(setf (functor-fn f) fn)
 	(error 'prolog-error 

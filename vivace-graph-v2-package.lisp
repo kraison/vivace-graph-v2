@@ -90,11 +90,17 @@
 	   #:q-
 	   #:cut
 	   #:prolog
+	   #:def-global-prolog-functor
+	   #:*prolog-global-functors*
+	   #:unify
+	   #:var-deref
 	   #:insert
 	   #:select
 	   #:select-flat
 	   #:select-first
 	   #:select-one
+	   #:do-query
+	   #:map-query
 	   #:read/1
 	   #:wrte/1
 	   #:nl/0

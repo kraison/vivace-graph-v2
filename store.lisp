@@ -55,7 +55,8 @@
 		 :index-queue (sb-concurrency:make-queue)
 		 :delete-queue (sb-concurrency:make-queue)
 		 :templates (make-hash-table :synchronized t :test 'eql)
-		 :indexed-predicates (make-hash-table :synchronized t :test 'equal)))
+		 ;;:indexed-predicates (make-hash-table :synchronized t :test 'equal)))
+		 :indexed-predicates (make-hash-table :synchronized t :test 'eql)))
 
 (defun make-local-triple-store (name location)
   (make-fresh-store name location))

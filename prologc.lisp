@@ -70,12 +70,14 @@ types that will be stored in the db.")
 (defmethod clause-head ((list list))
   (first list))
 
-(defgeneric prolog-compile-help (functor clauses))
-(defmethod prolog-compile-help ((functor functor) clauses)
-  (unless (null clauses)
-    (let ((arity (relation-arity (clause-head (first clauses)))))
-      (compile-functor functor arity (clauses-with-arity clauses #'= arity))
-      (prolog-compile-help functor (clauses-with-arity clauses #'/= arity)))))
+(defmacro compile-it (functor predicates &body body)
+  `#'(lambda (,@predicates cont)
+       (block ,functor ,@body)))
+
+(defun prolog-compile-help (functor clauses)
+  (let ((arity (relation-arity (clause-head (first clauses)))))
+    (compile-functor functor arity (clauses-with-arity clauses #'= arity))
+    (prolog-compile-help functor (clauses-with-arity clauses #'/= arity))))
 
 (defmethod prolog-compile ((functor functor))
   (if (null (functor-clauses functor))
@@ -194,9 +196,6 @@ types that will be stored in the db.")
   then bind them to new vars."
   (let ((exp-vars (remove '? (set-difference (variables-in exp)
 					     parameters))))
-    ;(format t "bind-unbound-vars parameters: ~A, exp: ~A~%" parameters exp)
-    ;(format t "variables-in ~A: ~A~%" exp (variables-in exp))
-    ;(format t "bind-unbound-vars exp-vars: ~A~%" exp-vars)
     (if exp-vars
         `(let ,(mapcar #'(lambda (var) `(,var (?)))
                        exp-vars)
@@ -377,10 +376,28 @@ types that will be stored in the db.")
 		(add-functor-clause f clause)
 		(make-functor :name functor :clauses (list clause))))))))
 
+;(defun deref-copy (exp)
+;  (sublis (mapcar #'(lambda (var) (cons (var-deref var) (?)))
+;		  (unique-find-anywhere-if #'var-p exp))
+;	  exp))
+
 (defun deref-copy (exp)
-  (sublis (mapcar #'(lambda (var) (cons (var-deref var) (?)))
-		  (unique-find-anywhere-if #'var-p exp))
-	  exp))
+  (let ((var-alist nil))
+    (labels ((walk (exp)
+	       (deref-exp exp)
+	       (cond ((consp exp)
+		      (reuse-cons (walk (first exp))
+				  (walk (rest exp))
+				  exp))
+		     ((var-p exp)
+		      (let ((entry (assoc exp var-alist)))
+			(if (not (null entry))
+			    (cdr entry)
+			    (let ((var-copy (?)))
+			      (push (cons exp var-copy) var-alist)
+			      var-copy))))
+		     (t exp))))
+      (walk exp))))
 
 (defun deref-exp (exp)
   "Build something equivalent to EXP with variables dereferenced."
@@ -406,17 +423,14 @@ types that will be stored in the db.")
 (defun compile-functor (functor arity clauses)
   "Compile all the clauses for a given symbol/arity into a single LISP function."
   (let ((*functor* (functor-name functor)) 
-	;;(make-functor-symbol (functor-name functor) arity))
 	(parameters (make-parameters arity)))
-    (let ((func
-	   `#'(lambda (,@parameters cont)
-		(block ,*functor*
-		  .,(maybe-add-undo-bindings
-		     (mapcar #'(lambda (clause)
-				 (compile-clause parameters clause 'cont))
-			     clauses))))))
-      ;;(setf (gethash *functor* *user-functors*) (eval func)))))
-      (when *prolog-trace* (format t "Adding ~A to ~A~%" func *functor*))
+    (let ((func `#'(lambda (,@parameters cont)
+		     (block ,*functor*
+		       .,(maybe-add-undo-bindings
+			  (mapcar #'(lambda (clause)
+				      (compile-clause parameters clause 'cont))
+				  clauses))))))
+      (when *prolog-trace* (format t "TRACE: Adding ~A to ~A~%" func *functor*))
       (set-functor-fn *functor* (eval func)))))
 
 (defun compile-body (body cont bindings)
@@ -518,23 +532,23 @@ types that will be stored in the db.")
 	    (*select-list* nil)
 	    (functor (make-functor :name *functor* :clauses nil)))
        (unwind-protect
-	    (let ((func #'(lambda (cont) 
-			    (handler-case
-				(block ,*functor*
-				  .,(maybe-add-undo-bindings
-				     (mapcar #'(lambda (clause)
-						 (compile-clause nil clause 'cont))
-					     `(((,top-level-query)
-						,@goals
-						(select 
-						 ,(mapcar #'(lambda (var)
-							      (typecase var
-								(symbol 
-								 (symbol-name var))
-								(list (first var))))
-							  vars) ,vars))))))
-			      (undefined-function (condition)
-				(error 'prolog-error :reason condition))))))
+	    (let ((func 
+		   #'(lambda (cont) 
+		       (handler-case
+			   (block ,*functor*
+			     .,(maybe-add-undo-bindings
+				(mapcar #'(lambda (clause)
+					    (compile-clause nil clause 'cont))
+					`(((,top-level-query)
+					   ,@goals
+					   (select 
+					    ,(mapcar #'(lambda (var)
+							 (typecase var
+							   (symbol (symbol-name var))
+							   (list (first var))))
+						     vars) ,vars))))))
+			 (undefined-function (condition)
+			   (error 'prolog-error :reason condition))))))
 	      (set-functor-fn *functor* func)
 	      (funcall func #'prolog-ignore))
 	 (delete-functor functor))
@@ -549,54 +563,37 @@ types that will be stored in the db.")
 (defmacro select-one (vars &rest goals)
   `(first (flatten (select ,vars ,@goals !))))
 
-#|
 (defmacro do-query (&rest goals)
-  "Execute a prolog query, ignoring the results."
+  `(select () ,@goals))
+
+(defmacro map-query (fn query &key collect?)
   (let* ((top-level-query (gensym "PROVE"))
-	 (goals (replace-?-vars goals))
+	 (vars (cadr query))
+	 (goals (replace-?-vars (cddr query)))
 	 (*functor* (make-functor-symbol top-level-query 0)))
     `(let* ((*trail* (make-array 200 :fill-pointer 0 :adjustable t))
 	    (*var-counter* 0)
-	    (*functor* ',*functor*))
+	    (*functor* ',*functor*)
+	    (*select-list* nil)
+	    (functor (make-functor :name *functor* :clauses nil)))
        (unwind-protect
-	    (let ((func #'(lambda (cont) 
-			    (handler-case
-				(block ,*functor*
-				  ,(when *prolog-trace*
-					 `(format t "TRACE: do-query for ~A~%" ',goals))
-				  .,(maybe-add-undo-bindings
-				     (mapcar #'(lambda (clause)
-						 (compile-clause nil clause 'cont))
-					     `(((,top-level-query)
-						,@goals)))))
-			      (undefined-function (condition)
-				(error 'prolog-error :reason condition))))))
-	      (setf (gethash ',*functor* *user-functors*) func)
-	      (funcall (gethash ',*functor* *user-functors*) #'prolog-ignore))
-	 (remhash ',*functor* *user-functors*))
-       t)))
-
-(defun exec-rule (goals action)
-  (let* ((rule (append (replace-?-vars goals) (list 'cut action)))
-	 (top-level-query (gensym "PROVE"))
-	 (*functor* (make-functor-symbol top-level-query 0)))
-    (eval
-     `(let* ((*trail* (make-array 200 :fill-pointer 0 :adjustable t))
-	     (*var-counter* 0)
-	     (*functor* ',*functor*))
-	(unwind-protect
-	     (let ((func #'(lambda (cont) 
-			     (block ,*functor*
-			       .,(maybe-add-undo-bindings
-				  (mapcar #'(lambda (clause)
-					      (compile-clause nil clause 'cont))
-					  `(((,top-level-query)
-					     ,@rule))))))))
-	       (setf (gethash ',*functor* *user-functors*) func)
-	       (funcall (gethash ',*functor* *user-functors*) #'prolog-ignore))
-	  (remhash ',*functor* *user-functors*))
-	t))))
-|#
+	    (let ((func 
+		   #'(lambda (cont)
+		       (handler-case
+			   (block ,*functor*
+			     .,(maybe-add-undo-bindings
+				(mapcar 
+				 #'(lambda (clause)
+				     (compile-clause nil clause 'cont))
+				 `(((,top-level-query)
+				    ,@goals
+				    (map-query ,fn ',vars ,collect?))))))
+			 (undefined-function (condition)
+			   (error 'prolog-error :reason condition))))))
+	      (set-functor-fn *functor* func)
+	      (funcall func #'prolog-ignore))
+	 (delete-functor functor))
+       (nreverse *select-list*))))
 
 (defun valid-prolog-query? (form)
   (case (first form)

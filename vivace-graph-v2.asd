@@ -23,7 +23,7 @@
 	       :parse-number
 	       :split-sequence
 	       :py-configparser
-	       :js
+	       :cl-js
 	       :cl-json)
   :components ((:file "uuid")
 	       (:file "vivace-graph-v2-package" :depends-on ("uuid"))

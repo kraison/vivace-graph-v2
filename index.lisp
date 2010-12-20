@@ -62,7 +62,8 @@
   
 (defstruct index name table test)
 
-(defun make-hierarchical-index (&key name (test 'idx-equal))
+;;(defun make-hierarchical-index (&key name (test 'idx-equal))
+(defun make-hierarchical-index (&key name (test 'eql))
   (make-index :name name
 	      :test test
 	      :table (make-hash-table :test test :synchronized t)))
@@ -137,28 +138,43 @@
 	  ((vectorp result) (make-index-cursor :index index :vector result :pointer 0))
 	  (t result))))
 
-(defun find-or-create-ht (ht keys create-fn)
+(defun find-or-create-ht (ht keys create-fn &optional (d 0))
   (assert (not (null keys)) nil "keys must be non-null.")
-  (multiple-value-bind (value found?) (gethash (first keys) ht)
-    (unless (and found? (typep value 'hash-table))
-      (setf value (setf (gethash (first keys) ht) (funcall create-fn))))
-    (cond ((null (rest keys))
-	   (values ht (first keys)))
-	  ((= 1 (length (rest keys)))
-	   (values value (first (rest keys))))
-	  (t
-	   (find-or-create-ht value (rest keys) create-fn)))))
+  (sb-ext:with-locked-hash-table (ht)
+    (multiple-value-bind (value found?) (gethash (first keys) ht)
+      (unless (and found? (typep value 'hash-table))
+	;;(dotimes (i d) (format t " "))
+	;;(format t "Creating HT at key level ~A~%" keys)
+	(setf (gethash (first keys) ht) (funcall create-fn)))))
+  (cond ((null (rest keys))
+	 (values ht (first keys)))
+	((= 1 (length (rest keys)))
+	 (values (gethash (first keys) ht) (first (rest keys))))
+	(t
+	 (find-or-create-ht (gethash (first keys) ht) (rest keys) create-fn (1+ d)))))
 
 (defun add-to-index (index value &rest keys)
-  (let ((ht (find-or-create-ht 
-	     (index-table index) 
-	     keys 
-	     #'(lambda () 
-		 (make-hash-table :synchronized t :test (index-test index))))))
+  (let ((ht (find-or-create-ht (index-table index) 
+			       keys 
+			       #'(lambda () 
+				   (make-hash-table :synchronized t 
+						    :test (index-test index))))))
     (setf (gethash (car (last keys)) ht) value)))
 
 (defun delete-from-index (index value &rest keys)
-  )
+  (declare (ignore index value keys)))
+
+(defmacro with-locked-index ((idx &rest keys) &body body)
+  (with-gensyms (sub-idx last-key)
+    `(multiple-value-bind (,sub-idx ,last-key)
+	 (find-or-create-ht (index-table ,idx)
+			    ',keys 
+			    #'(lambda ()
+				(make-hash-table :synchronized t 
+						 :test (index-test ,idx))))
+       (sb-ext:with-locked-hash-table (,sub-idx)
+	 ;;(format t "Locked ht ~A / ~A~%" ,last-key ,sub-idx)
+	 ,@body))))
 
 (defun test-index ()
   (let ((index (make-hierarchical-index)))

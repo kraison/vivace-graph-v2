@@ -32,7 +32,7 @@
   (prog1
       (time (select (?houses ?water-drinker ?zebra-owner) 
 		    (zebra ?houses ?water-drinker ?zebra-owner)))
-    (clrhash *user-functors*)))    
+    (clrhash *user-functors*)))
 
 (defun triple-test ()
   (clrhash *user-functors*)
