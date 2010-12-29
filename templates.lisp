@@ -24,12 +24,12 @@ DEFFACTS."
 			   `(add-triple ,node 
 					,(string-downcase (symbol-name (second slot)))
 					,(second slot)))
-			      slots)
+		       slots)
 		    ,node)))))))
 
 (defmacro fact (template)
   "Create a group of triples using the named template as defined in DEFTEMPLATE:
- (fact (person (has-name “John Q. Public”)
+ (fact (person (has-name \"John Q. Public\")
   	       (has-age 23)
   	       (has-eye-color blue)
  	       (has-hair-color black)))" 
@@ -41,7 +41,7 @@ DEFFACTS."
 				 (rest template))))))
 
 (defmacro deffacts (&rest templates)
-  "Create a set of triple groups conforming to the named template as defined by 
+  "Create a set of triple groups conforming to the named template as defined by
 DEFTEMPLATE:
  (deffacts
      (person (has-name \"John Q. Public\") (has-age 23) 
