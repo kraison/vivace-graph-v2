@@ -1,7 +1,7 @@
 (in-package #:vivace-graph-v2)
 
 (defgeneric serialize (thing stream))
-(defgeneric serialize-action (action triple stream))
+(defgeneric serialize-action (action stream &rest args))
 
 (defmethod serialize :around (thing stream)
   (handler-case
@@ -78,8 +78,8 @@
 (defmethod serialize ((vector vector) (stream stream))
   (serialize-sequence vector stream +vector+))
 
-(defmethod serialize-action ((action (eql :add-triple)) triple stream)
-  (write-byte +add-triple+ stream)
+(defmethod serialize ((triple triple) (stream stream))
+  (write-byte +triple+ stream)
   (serialize (subject triple) stream)
   (serialize (predicate triple) stream)
   (serialize (object triple) stream)
@@ -88,22 +88,59 @@
   (serialize (deleted? triple) stream)
   (serialize (cf triple) stream))
 
-(defmethod serialize-action ((action (eql :delete-triple)) (triple triple) stream)
-  (write-byte +delete-triple+ stream)
-  (serialize (id triple) stream)
-  (serialize (deleted? triple) stream))
+(defmethod serialize-action ((action (eql :add-triple)) stream &rest args)
+  (write-byte +add-triple+ stream)
+  (serialize (nth 0 args) stream)  ;; subject
+  (serialize (nth 1 args) stream)  ;; predicate
+  (serialize (nth 2 args) stream)  ;; object
+  (serialize (nth 3 args) stream)  ;; graph
+  (serialize (nth 4 args) stream)  ;; id
+  (serialize (nth 5 args) stream)  ;; deleted?
+  (serialize (nth 6 args) stream)) ;; cf
 
-(defmethod serialize-action ((action (eql :undelete-triple)) (triple triple) stream)
+(defmethod serialize-action ((action (eql :delete-triple)) stream &rest args)
   (write-byte +delete-triple+ stream)
-  (serialize (id triple) stream))
+  (serialize (nth 0 args) stream)  ;; id
+  (serialize (nth 1 args) stream)) ;; timestamp
 
-(defmethod serialize-action ((action (eql :set-cf)) (triple triple) stream)
+(defmethod serialize-action ((action (eql :undelete-triple)) stream &rest args)
   (write-byte +delete-triple+ stream)
-  (serialize (id triple) stream)
-  (serialize (cf triple) stream))
+  (serialize (nth 0 args) stream)) ;; id
 
-(defmethod serialize-action ((action (eql :transaction)) tx stream)
+(defmethod serialize-action ((action (eql :set-cf)) stream &rest args)
+  (write-byte +delete-triple+ stream)
+  (serialize (nth 0 args) stream)  ;; id
+  (serialize (nth 1 args) stream)) ;; cf
+
+(defmethod serialize-action ((action (eql :transaction)) stream &rest args)
   (write-byte +transaction+ stream)
-  (dolist (action tx)
-    (serialize-action (first action) (second action) stream))
-  (write-byte +transaction+ stream))
+  (let ((tx (nth 0 args)))
+    (serialize (length tx) stream)
+    (dolist (action tx)
+      (apply #'serialize-action 
+	     (nconc (list (first action) stream) (rest action))))))
+
+(defun test-serializer (file)
+  (with-open-file (stream file
+			  :direction :output
+			  :element-type '(unsigned-byte 8)
+			  :if-exists :overwrite
+			  :if-does-not-exist :create)
+    (let ((uuid (make-uuid))
+	  (vec (make-array 5)))
+      (setf (aref vec 0) 1)
+      (setf (aref vec 1) #\a)
+      (setf (aref vec 2) "string")
+      (setf (aref vec 3) 'symbol)
+      (setf (aref vec 4) uuid)
+      (format t "UUID IS ~A~%" uuid)
+      (serialize 123 stream)
+      (serialize 123.123 stream)
+      (serialize 123/555 stream)
+      (serialize #\a stream)
+      (serialize "string" stream)
+      (serialize 'symbol stream)
+      (serialize uuid stream)
+      (serialize (list 1 #\a "string" 'symbol uuid) stream)
+      (serialize vec stream)))
+  (deserialize-file file))

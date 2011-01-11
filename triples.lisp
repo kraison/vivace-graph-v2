@@ -1,22 +1,5 @@
 (in-package #:vivace-graph-v2)
 
-(defparameter *print-triple-details* nil)
-
-(defun print-triple (triple stream depth)
-  (declare (ignore depth))
-  (if *print-triple-details* 
-      (format stream "<'~A' '~A' '~A' {~F:~A:~A}>" 
-	      (subject triple) (predicate triple) (object triple) 
-	      (cf triple) (graph triple) (id triple))
-      (format stream "<'~A' '~A' '~A'>" 
-	      (subject triple) (predicate triple) (object triple))))
-
-(defstruct (triple
-	     (:print-function print-triple)
-	     (:conc-name triple-)
-	     (:predicate triple?))
-  subject predicate object graph id (deleted? nil) (cf +cf-true+) (persistent? t))
-
 (defgeneric triple-equal (t1 t2)
   (:method ((t1 triple) (t2 triple)) (uuid:uuid-eql (id t1) (id t2)))
   (:method (t1 t2) nil))
@@ -264,6 +247,20 @@
 		    (delete-triple (get-triple-by-id id)))
 		(get-from-index (gspoi-idx *store*) name))))
 
+(defun %set-triple-cf (id cf)
+  (let ((triple (get-triple-by-id (if (uuid:uuid? id) 
+				      id 
+				      (uuid:make-uuid-from-string id)))))
+    (when (triple? triple)
+      (cas (triple-cf triple) (triple-cf triple) cf))))
+
+(defun %undelete-triple (id)
+  (let ((triple (get-triple-by-id (if (uuid:uuid? id) 
+				      id 
+				      (uuid:make-uuid-from-string id)))))
+    (when (triple? triple)
+      (cas (triple-deleted? triple) (triple-deleted? triple) nil))))
+
 (defun %delete-triple (id timestamp)
   (let ((triple (get-triple-by-id (if (uuid:uuid? id) 
 				      id 
@@ -280,6 +277,7 @@
 			     :id id
 			     :persistent? t
 			     :deleted? deleted?)))
+    (setf (gethash (id triple) (id-idx *store*)) triple)
     (enqueue-triple-for-indexing triple)
     triple))
   

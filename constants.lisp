@@ -24,8 +24,8 @@
 (defparameter +name-slot+ #x07)
 (defparameter +clauses-slot+ #x08)
 (defparameter +premises-slot+ #x09)
-(defparameter +conclusions-slot+ #x10)
-(defparameter +cf-slot+ #x11)
+(defparameter +conclusions-slot+ #x0a)
+(defparameter +cf-slot+ #x0b)
 
 ;; Action identifiers for serialization
 (defparameter +transaction+ #x00)
