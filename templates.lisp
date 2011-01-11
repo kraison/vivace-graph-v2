@@ -16,7 +16,7 @@ DEFFACTS."
     (setf (gethash name (templates *store*))
 	  (eval
 	   `#'(lambda (&key ,@(mapcar #'second slots))
-		(with-transaction (*store*)
+		(with-graph-transaction (*store*)
 		  (let ((,node (make-anonymous-node)))
 		    (add-triple ,node "is-a" ,(string-downcase (symbol-name name)))
 		    ,@(mapcar 

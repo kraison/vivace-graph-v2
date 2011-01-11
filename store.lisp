@@ -17,7 +17,9 @@
    (delete-queue :initarg :delete-queue :accessor delete-queue)
    (indexed-predicates :initarg :indexed-predicates :accessor indexed-predicates)
    (templates :initarg :templates :accessor templates)
-   (location :initarg :location :accessor location)))
+   (location :initarg :location :accessor location)
+   (logger-thread :initarg :logger-thread :accessor logger-thread)
+   (lock :initarg :lock :accessor store-lock :initform (make-recursive-lock))))
 
 (defclass remote-triple-store (triple-store)
   ((host :initarg :host :accessor remote-host)
@@ -38,25 +40,28 @@
     (sort result #'string>)))
 
 (defun make-fresh-store (name location)
-  (make-instance 'local-triple-store
-		 :name name
-		 :location location
-		 :spogi-idx (make-hierarchical-index)
-		 :posgi-idx (make-hierarchical-index)
-		 :ospgi-idx (make-hierarchical-index)
-		 :gspoi-idx (make-hierarchical-index)
-		 :gposi-idx (make-hierarchical-index)
-		 :gospi-idx (make-hierarchical-index)
-		 :text-idx (make-skip-list :key-equal 'equalp
-					   :value-equal 'uuid:uuid-eql
-					   :duplicates-allowed? t)
-		 :id-idx (make-uuid-table :synchronized t)
-		 :log-mailbox (sb-concurrency:make-mailbox)
-		 :index-queue (sb-concurrency:make-queue)
-		 :delete-queue (sb-concurrency:make-queue)
-		 :templates (make-hash-table :synchronized t :test 'eql)
-		 ;;:indexed-predicates (make-hash-table :synchronized t :test 'equal)))
-		 :indexed-predicates (make-hash-table :synchronized t :test 'eql)))
+  (let ((store
+	 (make-instance 'local-triple-store
+			:name name
+			:location location
+			:spogi-idx (make-hierarchical-index)
+			:posgi-idx (make-hierarchical-index)
+			:ospgi-idx (make-hierarchical-index)
+			:gspoi-idx (make-hierarchical-index)
+			:gposi-idx (make-hierarchical-index)
+			:gospi-idx (make-hierarchical-index)
+			:text-idx (make-skip-list :key-equal 'equalp
+						  :value-equal 'uuid:uuid-eql
+						  :duplicates-allowed? t)
+			:id-idx (make-uuid-table :synchronized t)
+			:log-mailbox (sb-concurrency:make-mailbox)
+			:index-queue (sb-concurrency:make-queue)
+			:delete-queue (sb-concurrency:make-queue)
+			:templates (make-hash-table :synchronized t :test 'eql)
+			:indexed-predicates (make-hash-table :synchronized t 
+							     :test 'eql))))
+    (setf (logger-thread store) (start-logger store))
+    store))
 
 (defun make-local-triple-store (name location)
   (make-fresh-store name location))
@@ -84,15 +89,28 @@
 	(error "Unknown triple-store requested: ~A" name))))
 
 (defun close-triple-store (&key (store *store*))
-  (setq *graph* nil)
   (remhash (name store) *store-table*)
-  (if (equal (name store) (name *store*)) (setq *store* nil)))
+  (if (eql store *store*) (setq *store* nil))
+  (sb-concurrency:send-message (log-mailbox store) :shutdown)
+  (join-thread (logger-thread store))
+  nil)
 
-(defun open-triple-store (&key location host port user password)
-  (declare (ignore location host port user password)))
+(defun open-triple-store (&key name location host port user password)
+  (let ((store (create-triple-store :name name
+				    :location location
+				    :if-exists? :open
+				    :host host
+				    :port port
+				    :user user
+				    :port port
+				    :password password)))
+    (restore-triple-store store)
+    (setq *store* store)))
 
 (defun clear-triple-store (&optional (store *store*))
-  (setq *store* (make-fresh-store *graph* (location store))))
+  (sb-concurrency:send-message (log-mailbox store) :shutdown-and-clear)
+  (join-thread (logger-thread store))
+  (make-fresh-store *graph* (location store)))
   
 (defun use-graph (name)
   (setq *graph* name))

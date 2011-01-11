@@ -18,7 +18,7 @@
 	   #:triple-store?
 	   #:needs-indexing?
 	   #:do-indexing
-	   ;#:with-transaction
+	   #:with-graph-transaction
 	   #:*in-transaction-p*
 	   #:dbm-rollback
 	   #:dbm-commit

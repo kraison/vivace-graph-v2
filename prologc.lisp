@@ -472,7 +472,7 @@ types that will be stored in the db.")
 (defmacro insert (&rest triples)
   "Add triples to the data base. Wraps all additions in a single transaction."
   `(let ((count 0))
-     (with-transaction (*store*)
+     (with-graph-transaction (*store*)
        (dolist (triple ',triples)
 	 (add-triple (first triple) (second triple) (third triple) 
 		     (or (fourth triple) *graph*))

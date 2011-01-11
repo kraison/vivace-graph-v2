@@ -131,18 +131,26 @@
   (loop for triple = (sb-concurrency:dequeue (index-queue store)) do
        (if (not (triple? triple))
 	   (return)
-	   (with-transaction (*store*)
+	   (with-graph-transaction (*store*)
 	     (index-triple triple *store*)))))
 
 (defun enqueue-triple-for-indexing (triple)
   (add-to-index-queue triple))
 
-(defun undelete-triple (triple)
-  (cas (triple-deleted? triple) (triple-deleted? triple) nil)
+(defun undelete-triple (triple &key (persistent? t))
+  (if persistent?
+      (with-graph-transaction (*store*)
+	(push (list :undelete-triple triple) (tx-queue *current-transaction*))
+	(cas (triple-deleted? triple) (triple-deleted? triple) nil))
+      (cas (triple-deleted? triple) (triple-deleted? triple) nil))
   triple)
 
-(defun delete-triple (triple)
-  (cas (triple-deleted? triple) nil (gettimeofday)))
+(defun delete-triple (triple &key (persistent? t))
+  (if persistent?
+      (with-graph-transaction (*store*)
+	(push (list :delete-triple triple) (tx-queue *current-transaction*))
+	(cas (triple-deleted? triple) nil (gettimeofday)))
+      (cas (triple-deleted? triple) nil (gettimeofday))))
   ;;(add-to-delete-queue triple)))
 
 (defun lookup-triple (subject predicate object graph &key retrieve-deleted?)
@@ -175,11 +183,15 @@
        (let ((triple 
 	      (lookup-triple subject predicate object graph :retrieve-deleted? t)))
 	 (when (triple? triple)
-	   (when cf
-	     (set-triple-cf triple cf))
-	   (if (deleted? triple)
-	       (undelete-triple triple)
-	       triple)))
+	   (when (or cf (deleted? triple))
+	     (with-graph-transaction (*store*)
+	       (when cf
+		 (when persistent?
+		   (push (list :set-cf triple) (tx-queue *current-transaction*)))
+		 (set-triple-cf triple cf))
+	       (if (deleted? triple)
+		   (undelete-triple triple :persistent? persistent?)
+		   triple)))))
        (let ((id (uuid:make-v1-uuid)))  
 	 (let ((triple (make-triple :subject subject
 				    :predicate predicate
@@ -188,13 +200,15 @@
 				    :cf (or cf +cf-true+)
 				    :persistent? persistent?
 				    :id id)))
-	   (add-to-index (gspoi-idx *store*) (id triple) 
-			 (graph triple) (subject triple) 
-			 (predicate triple) (object triple))
-	   (if index-immediate?
-	       (index-triple triple *store*)
-	       (enqueue-triple-for-indexing triple))
-	   triple))))))
+	   (with-graph-transaction (*store*)
+	     (push (list :add-triple triple) (tx-queue *current-transaction*))
+	     (add-to-index (gspoi-idx *store*) (id triple) 
+			   (graph triple) (subject triple) 
+			   (predicate triple) (object triple))
+	     (if index-immediate?
+		 (index-triple triple *store*)
+		 (enqueue-triple-for-indexing triple))
+	     triple)))))))
 
 (defun get-triple-by-id (id &optional (store *store*))
   (gethash id (id-idx store)))
@@ -245,7 +259,7 @@
 	    (remove-if #'deleted? triples)))))
 
 (defun clear-graph (&optional (name *graph*))
-  (with-transaction (*store*)
+  (with-graph-transaction (*store*)
     (map-cursor #'(lambda (id)
 		    (delete-triple (get-triple-by-id id)))
 		(get-from-index (gspoi-idx *store*) name))))

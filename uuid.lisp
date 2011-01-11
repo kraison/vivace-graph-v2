@@ -10,6 +10,7 @@
 (export 'clock-seq-and-reserved)
 (export 'uuid-eql)
 (export 'uuid?)
+(export 'serialize-uuid)
 
 (defgeneric uuid? (thing)
   (:method ((thing uuid)) t)
@@ -24,6 +25,22 @@
   (:method (uuid1 (uuid2 uuid))
     nil)
   (:documentation "Equality check for UUIDs."))
+
+(defun serialize-uuid (uuid stream)
+  (with-slots 
+	(time-low time-mid time-high-and-version clock-seq-and-reserved clock-seq-low 
+		  node)
+      uuid
+    (loop for i from 3 downto 0
+       do (write-byte (ldb (byte 8 (* 8 i)) time-low) stream))
+    (loop for i from 5 downto 4
+       do (write-byte (ldb (byte 8 (* 8 (- 5 i))) time-mid) stream))
+    (loop for i from 7 downto 6
+       do (write-byte (ldb (byte 8 (* 8 (- 7 i))) time-high-and-version) stream))
+    (write-byte (ldb (byte 8 0) clock-seq-and-reserved) stream)
+    (write-byte (ldb (byte 8 0) clock-seq-low) stream)
+    (loop for i from 15 downto 10
+       do (write-byte (ldb (byte 8 (* 8 (- 15 i))) node) stream))))
 
 (defun uuid-to-byte-array (uuid &optional (type-specifier nil))
   "Converts an uuid to byte-array"

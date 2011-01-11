@@ -337,7 +337,7 @@ comprehensive regex."
 		 (= (length clause) 4)) 
 	     (not (some #'var-p clause)))
 	(handler-case
-	    (with-transaction (*store*)
+	    (with-graph-transaction (*store*)
 	      (when *prolog-trace* (format t "TRACE: Retracting fact ~A~%" clause))
 	      (let ((triple (lookup-triple (first clause) (second clause) 
 					   (third clause)
@@ -362,7 +362,7 @@ comprehensive regex."
 (def-global-prolog-functor is-valid/1 (item cont)
   "Mark a triple as VALID and remove an INVALID marker."
   (var-deref item)
-  (with-transaction (*store*)
+  (with-graph-transaction (*store*)
     (let ((triple (lookup-triple item "has-property" "invalid" *graph*)))
       (when (triple? triple)
 	(delete-triple triple)))
@@ -379,7 +379,7 @@ comprehensive regex."
 (def-global-prolog-functor is-invalid/1 (item cont)
   "Mark a triple as INVALID and remove a VALID marker."
   (var-deref item)
-  (with-transaction (*store*)
+  (with-graph-transaction (*store*)
     (let ((triple (lookup-triple item "has-property" "valid" *graph*)))
       (when (triple? triple)
 	(delete-triple triple)))

@@ -14,6 +14,7 @@
 	       :sb-posix
 	       :cffi
 	       :bordeaux-threads
+	       ;;:cl-btree-0.3
 	       :cl-skip-list
 	       :hunchentoot
 	       :uuid
@@ -34,7 +35,9 @@
 	       (:file "utilities" :depends-on ("globals"))
 	       (:file "data-types" :depends-on ("utilities"))
 	       (:file "certainty-factors" :depends-on ("constants"))
-	       (:file "transaction" :depends-on ("data-types"))
+	       (:file "serialize" :depends-on ("data-types"))
+	       (:file "deserialize" :depends-on ("serialize"))
+	       (:file "transaction" :depends-on ("deserialize"))
 	       (:file "index" :depends-on ("transaction"))
 	       (:file "full-text-index" :depends-on ("data-types"))
 	       (:file "store" :depends-on ("index" "full-text-index"))

@@ -12,11 +12,30 @@
 (defconstant +cf-false+ -1.0)
 (defconstant +cf-unknown+ 0.0)
 
-(defconstant +needs-lookup+ :needs-lookup)
+;; Shortened slot identifiers for slot keys
+(defparameter +predicate-slot+ #x00)
+(defparameter +subject-slot+ #x01)
+(defparameter +object-slot+ #x02)
+(defparameter +timestamp-slot+ #x03)
+(defparameter +belief-factor-slot+ #x04)
+(defparameter +deleted?-slot+ #x04)
+(defparameter +derived?-slot+ #x05)
+(defparameter +uuid-slot+ #x06)
+(defparameter +name-slot+ #x07)
+(defparameter +clauses-slot+ #x08)
+(defparameter +premises-slot+ #x09)
+(defparameter +conclusions-slot+ #x10)
+(defparameter +cf-slot+ #x11)
+
+;; Action identifiers for serialization
+(defparameter +transaction+ #x00)
+(defparameter +add-triple+ #x01)
+(defparameter +delete-triple+ #x02)
+(defparameter +undelete-triple+ #X03)
+(defparameter +set-cf+ #x04)
 
 ;; Built-in type identifiers for serializing
 (defconstant +needs-lookup+ :needs-lookup)
-(defconstant +unknown+ 0)
 (defconstant +negative-integer+ 1)
 (defconstant +positive-integer+ 2)
 (defconstant +character+ 3)
@@ -31,7 +50,6 @@
 (defconstant +null+ 12)
 (defconstant +blob+ 13) ;; Uninterpreted octets
 (defconstant +dotted-list+ 14)
-
 ;; User-defined type identifiers for serializing. Start at 100
 (defconstant +uuid+ 100)
 (defconstant +triple+ 101)
