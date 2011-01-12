@@ -143,8 +143,6 @@
   (sb-ext:with-locked-hash-table (ht)
     (multiple-value-bind (value found?) (gethash (first keys) ht)
       (unless (and found? (typep value 'hash-table))
-	;;(dotimes (i d) (format t " "))
-	;;(format t "Creating HT at key level ~A~%" keys)
 	(setf (gethash (first keys) ht) (funcall create-fn)))))
   (cond ((null (rest keys))
 	 (values ht (first keys)))

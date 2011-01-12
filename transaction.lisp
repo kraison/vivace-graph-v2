@@ -39,14 +39,16 @@
 
 (defun restore-triple-store (store)
   (let ((*store* store))
-    (multiple-value-bind (snapshot-file imestamp) (find-newest-snapshot store)
-      (with-open-file (stream snapshot-file :element-type '(unsigned-byte 8))
-	(do ((code (read-byte stream nil :eof) (read-byte stream nil :eof)))
-	    ((or (eql code :eof) (null code) (= code 0)))
-	  (format t "CODE ~A: ~A~%" code (deserialize code stream))))
-      (dolist (file (find-transactions store timestamp))
-	(replay-transactions file))
-      store)))
+    (sb-ext:with-locked-hash-table ((main-idx store))
+      (multiple-value-bind (snapshot-file imestamp) (find-newest-snapshot store)
+	(with-open-file (stream snapshot-file :element-type '(unsigned-byte 8))
+	  (do ((code (read-byte stream nil :eof) (read-byte stream nil :eof)))
+	      ((or (eql code :eof) (null code)))
+	    (format t "CODE ~A: ~A~%" code (deserialize code stream))))
+	(dolist (file (find-transactions store timestamp))
+	  (replay-transactions file))
+	(do-indexing store)
+	store))))
 
 (defun snapshot (store)
   (with-open-file (stream 
@@ -55,16 +57,16 @@
 		   :element-type '(unsigned-byte 8)
 		   :if-exists :overwrite
 		   :if-does-not-exist :create)
-    (with-recursive-lock-held ((store-lock store))
+    (sb-ext:with-locked-hash-table ((main-idx store))
       (maphash #'(lambda (id triple)
 		   (declare (ignore id))
 		   (when (persistent? triple)
 		     (serialize triple stream)))
-	       (id-idx store)))
+	       (gethash :id-idx (index-table (main-idx store)))))
     (write-byte 0 stream)))
 
 (defun dump-transaction (stream tx)
-  (when tx-queue
+  (when tx
     (logger :info "Dumping tx ~A to ~A" tx stream)
     (serialize-action :transaction stream tx)
     (force-output stream)))
@@ -154,21 +156,17 @@
     `(let ((,success nil))
        (flet ((atomic-op ()
                 ,@body))
-	 ;;(format t "STORE: ~A~%" ,store)
          (cond ((and (transaction? *current-transaction*)
 		     (equal (name (tx-store *current-transaction*)) (name ,store)))
 		(atomic-op))
 	       ((transaction? *current-transaction*)
 		(error "Transactions cannot currently span multiple stores."))
 	       (t
-		(unwind-protect
-		     (let ((*current-transaction* (make-transaction :store ,store)))
-		       ;; Global serialization is not ideal.
-		       (with-recursive-lock-held ((store-lock ,store))
-			 (atomic-op))
-		       (sb-concurrency:send-message (log-mailbox ,store)
-						    *current-transaction*)
-		       (setf ,success t))
-		  (if ,success
-		      t
-		      nil))))))))
+		(let ((*current-transaction* (make-transaction :store ,store)))
+		  ;; Global serialization is not ideal.
+		  (prog1
+		      (sb-ext:with-locked-hash-table ((main-idx ,store))
+			(atomic-op))
+		    (sb-concurrency:send-message (log-mailbox ,store)
+						 *current-transaction*)
+		    (setf ,success t)))))))))

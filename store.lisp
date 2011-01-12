@@ -4,13 +4,14 @@
   ((name :initarg :name :accessor name)))
 
 (defclass local-triple-store (triple-store)
-  ((spogi-idx :initarg :spogi-idx :accessor spogi-idx)
-   (posgi-idx :initarg :posgi-idx :accessor posgi-idx)
-   (ospgi-idx :initarg :ospgi-idx :accessor ospgi-idx)
-   (gspoi-idx :initarg :gspoi-idx :accessor gspoi-idx)
-   (gposi-idx :initarg :gposi-idx :accessor gposi-idx)
-   (gospi-idx :initarg :gospi-idx :accessor gospi-idx)
-   (id-idx :initarg :id-idx :accessor id-idx)
+  (;;(spogi-idx :initarg :spogi-idx :accessor spogi-idx)
+   ;;(posgi-idx :initarg :posgi-idx :accessor posgi-idx)
+   ;;(ospgi-idx :initarg :ospgi-idx :accessor ospgi-idx)
+   ;;(gspoi-idx :initarg :gspoi-idx :accessor gspoi-idx)
+   ;;(gposi-idx :initarg :gposi-idx :accessor gposi-idx)
+   ;;(gospi-idx :initarg :gospi-idx :accessor gospi-idx)
+   ;;(id-idx :initarg :id-idx :accessor id-idx)
+   (main-idx :initarg :main-idx :accessor main-idx)
    (text-idx :initarg :text-idx :accessor text-idx)
    (log-mailbox :initarg :log-mailbox :accessor log-mailbox)
    (index-queue :initarg :index-queue :accessor index-queue)
@@ -18,8 +19,7 @@
    (indexed-predicates :initarg :indexed-predicates :accessor indexed-predicates)
    (templates :initarg :templates :accessor templates)
    (location :initarg :location :accessor location)
-   (logger-thread :initarg :logger-thread :accessor logger-thread)
-   (lock :initarg :lock :accessor store-lock :initform (make-recursive-lock))))
+   (logger-thread :initarg :logger-thread :accessor logger-thread)))
 
 (defclass remote-triple-store (triple-store)
   ((host :initarg :host :accessor remote-host)
@@ -44,22 +44,24 @@
 	 (make-instance 'local-triple-store
 			:name name
 			:location location
-			:spogi-idx (make-hierarchical-index)
-			:posgi-idx (make-hierarchical-index)
-			:ospgi-idx (make-hierarchical-index)
-			:gspoi-idx (make-hierarchical-index)
-			:gposi-idx (make-hierarchical-index)
-			:gospi-idx (make-hierarchical-index)
+			:main-idx (make-hierarchical-index)
+			;;:spogi-idx (make-hierarchical-index)
+			;;:posgi-idx (make-hierarchical-index)
+			;;:ospgi-idx (make-hierarchical-index)
+			;;:gspoi-idx (make-hierarchical-index)
+			;;:gposi-idx (make-hierarchical-index)
+			;;:gospi-idx (make-hierarchical-index)
+			;;:id-idx (make-uuid-table :synchronized t)
 			:text-idx (make-skip-list :key-equal 'equalp
 						  :value-equal 'uuid:uuid-eql
 						  :duplicates-allowed? t)
-			:id-idx (make-uuid-table :synchronized t)
 			:log-mailbox (sb-concurrency:make-mailbox)
 			:index-queue (sb-concurrency:make-queue)
 			:delete-queue (sb-concurrency:make-queue)
 			:templates (make-hash-table :synchronized t :test 'eql)
 			:indexed-predicates (make-hash-table :synchronized t 
 							     :test 'eql))))
+    (add-to-index (main-idx store) (make-uuid-table :synchronized t) :id-idx)
     (setf (logger-thread store) (start-logger store))
     store))
 
