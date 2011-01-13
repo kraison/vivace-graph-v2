@@ -10,11 +10,8 @@
       (format t "CODE ~A: ~A~%" code (deserialize code stream)))))
 
 (defmethod deserialize :around (code stream)
-  (format t "DESERIALIZE: ~A~%" code)
   (handler-case
-      (let ((item (call-next-method)))
-	(format t "   -> ~A~%" item)
-	item)
+      (call-next-method)
     (error (condition)
       (error 'deserialization-error :instance stream :reason condition))))
 
