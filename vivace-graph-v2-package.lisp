@@ -19,7 +19,13 @@
 	   #:needs-indexing?
 	   #:do-indexing
 	   #:with-graph-transaction
-	   #:*in-transaction-p*
+	   #:with-locked-index
+	   #:*current-transaction*
+	   #:*in-transaction-p
+	   #:main-idx
+	   #:log-mailbox
+	   #:tx-store
+	   #:transaction?
 	   #:dbm-rollback
 	   #:dbm-commit
 	   #:dbm-begin
@@ -47,6 +53,8 @@
 	   #:add-triple
 	   #:get-triples
 	   #:get-triples-list
+	   #:list-triples
+	   #:triple-count
 	   #:-o
 	   #:lookup-triple
 	   #:bulk-add-triples

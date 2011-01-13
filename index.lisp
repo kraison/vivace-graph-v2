@@ -163,16 +163,19 @@
   (declare (ignore index value keys)))
 
 (defmacro with-locked-index ((idx &rest keys) &body body)
-  (with-gensyms (sub-idx last-key)
-    `(multiple-value-bind (,sub-idx ,last-key)
-	 (find-or-create-ht (index-table ,idx)
-			    ',keys 
-			    #'(lambda ()
-				(make-hash-table :synchronized t 
-						 :test (index-test ,idx))))
-       (sb-ext:with-locked-hash-table (,sub-idx)
-	 ;;(format t "Locked ht ~A / ~A~%" ,last-key ,sub-idx)
-	 ,@body))))
+  (if keys
+      (with-gensyms (sub-idx last-key)
+	`(multiple-value-bind (,sub-idx ,last-key)
+	     (find-or-create-ht (index-table ,idx)
+				',keys 
+				#'(lambda ()
+				    (make-hash-table :synchronized t 
+						     :test (index-test ,idx))))
+	   (sb-ext:with-locked-hash-table (,sub-idx)
+	     ;;(format t "Locked ht ~A / ~A~%" ,last-key ,sub-idx)
+	     ,@body)))
+      `(sb-ext:with-locked-hash-table ((index-table ,idx))
+	 ,@body)))
 
 (defun test-index ()
   (let ((index (make-hierarchical-index)))

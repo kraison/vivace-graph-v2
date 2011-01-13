@@ -10,8 +10,11 @@
       (format t "CODE ~A: ~A~%" code (deserialize code stream)))))
 
 (defmethod deserialize :around (code stream)
+  (format t "DESERIALIZE: ~A~%" code)
   (handler-case
-      (call-next-method)
+      (let ((item (call-next-method)))
+	(format t "   -> ~A~%" item)
+	item)
     (error (condition)
       (error 'deserialization-error :instance stream :reason condition))))
 
@@ -48,6 +51,12 @@
     (dotimes (i length)
       (setf (aref array i) (read-byte stream)))
     (sb-ext:octets-to-string array)))
+
+(defmethod deserialize ((code (eql +t+)) stream)
+  t)
+
+(defmethod deserialize ((code (eql +null+)) stream)
+  nil)
 
 (defmethod deserialize ((code (eql +symbol+)) stream)
   (let ((code (read-byte stream)))

@@ -1,7 +1,7 @@
 (in-package #:vivace-graph-v2)
 
 (defclass triple-store ()
-  ((name :initarg :name :accessor name)))
+  ((name :initarg :name :accessor store-name)))
 
 (defclass local-triple-store (triple-store)
   (;;(spogi-idx :initarg :spogi-idx :accessor spogi-idx)
@@ -74,7 +74,7 @@
   (if location
       (let ((store (make-local-triple-store *graph* location)))
 	(if (triple-store? store)
-	    (setf (gethash (name store) *store-table*) store
+	    (setf (gethash (store-name store) *store-table*) store
 		  *store* store)
 	      (error "Unknown error opening triple-store at ~A." location)))
       (setq *store* (make-instance 'remote-triple-store
@@ -91,7 +91,7 @@
 	(error "Unknown triple-store requested: ~A" name))))
 
 (defun close-triple-store (&key (store *store*))
-  (remhash (name store) *store-table*)
+  (remhash (store-name store) *store-table*)
   (if (eql store *store*) (setq *store* nil))
   (sb-concurrency:send-message (log-mailbox store) :shutdown)
   (join-thread (logger-thread store))

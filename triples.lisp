@@ -70,25 +70,6 @@
   (defun anonymous? (node)
     (cl-ppcre:scan regex node)))
 
-(defmethod reify (node)
-  (declare (special node))
-  (select (?p ?o)
-	  (lisp ?s node)
-	  (q- ?s ?p ?o)))
-
-(defun reify-recursive (node &key (max-levels 2) (level 0))
-  (unless (>= level max-levels)
-    (let ((relations (reify node)))
-      (list node
-	    (mapcar #'(lambda (relation)
-			(if (anonymous? (second relation))
-			    (list relation 
-				  (reify-recursive (second relation)
-						   :max-levels max-levels
-						   :level (1+ level)))
-			    relation))
-		    relations)))))
-
 (defun make-text-idx-key (g s p o)
   (string-downcase (format nil "~A~A~A~A~A~A~A" g #\Nul s #\Nul p #\Nul o)))
 
@@ -115,7 +96,7 @@
     triple))
 
 (defun do-indexing (&optional (store *store*))
-  (sb-ext:with-locked-hash-table ((main-idx store))
+  (with-locked-index ((main-idx store))
     (loop for triple = (sb-concurrency:dequeue (index-queue store)) do
 	 (when (triple? triple)
 	   (index-triple triple *store*))
@@ -196,7 +177,7 @@
 	   triple))))))
 
 (defun get-triple-by-id (id &optional (store *store*))
-  (get-from-index (main-idx store) :id-idx id))
+  (cursor-value (get-from-index (main-idx store) :id-idx id)))
   ;;(gethash id (id-idx store)))
 
 (defun get-triples (&key s p o (g *graph*) (store *store*))
@@ -243,6 +224,20 @@
 	    (let ((triples (remove-if #'deleted? triples)))
 	      (subseq triples 0 (if (> (length triples) limit) limit)))
 	    (remove-if #'deleted? triples)))))
+
+(defun list-triples (&optional (store *store*))
+  (let ((triples nil))
+    (maphash #'(lambda (id triple)
+		 (when (not (deleted? triple)) (push triple triples)))
+	     (gethash :id-idx (index-table (main-idx store))))
+    triples))
+
+(defun triple-count (&optional (store *store*))
+  (let ((triple-count 0))
+    (maphash #'(lambda (id triple)
+		 (when (not (deleted? triple)) (incf triple-count)))
+	     (gethash :id-idx (index-table (main-idx store))))
+    triple-count))
 
 (defun clear-graph (&optional (name *graph*))
   (with-graph-transaction (*store*)

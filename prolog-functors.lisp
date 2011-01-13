@@ -393,3 +393,22 @@ comprehensive regex."
     (when (triple? triple)
       (funcall cont))))
 
+(defmethod reify (node)
+  (declare (special node))
+  (select (?p ?o)
+	  (lisp ?s node)
+	  (q- ?s ?p ?o)))
+
+(defun reify-recursive (node &key (max-levels 2) (level 0))
+  (unless (>= level max-levels)
+    (let ((relations (reify node)))
+      (list node
+	    (mapcar #'(lambda (relation)
+			(if (anonymous? (second relation))
+			    (list relation 
+				  (reify-recursive (second relation)
+						   :max-levels max-levels
+						   :level (1+ level)))
+			    relation))
+		    relations)))))
+

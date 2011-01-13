@@ -32,4 +32,5 @@
 (defvar *cont* nil "Continuation container for step-wise queries.")
 (defvar *prolog-global-functors* (make-hash-table :synchronized t))
 (defvar *user-functors* (make-hash-table :synchronized t :test 'eql))
+(defparameter *prolog-trace* nil)
 

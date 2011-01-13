@@ -3,8 +3,6 @@
 ;;;; Copyright (c) 1991 Peter Norvig, (c) 2010 Kevin Raison
 (in-package #:vivace-graph-v2)
 
-(defparameter *prolog-trace* nil)
-
 (defun trace-prolog () (setq *prolog-trace* t))
 (defun untrace-prolog () (setq *prolog-trace* nil))
 

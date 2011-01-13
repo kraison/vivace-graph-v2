@@ -2,6 +2,7 @@
 
 (defparameter *current-transaction* nil)
 (defparameter *max-log-file-length* 10000000)
+(defparameter *file-counter* 1)
 
 (defstruct (transaction
 	     (:conc-name tx-)
@@ -12,23 +13,38 @@
   (store nil))
 
 (defun find-newest-snapshot (store)
-  (let ((snap nil))
-    (dolist (file (directory (make-pathname :directory (location store)
+  (let ((snap nil) 
+	(location (if (pathnamep (location store)) (namestring (location store))
+		      (location store))))
+    (dolist (file (directory (make-pathname :directory location
 					    :name :wild :type :wild)))
       (when (and (pathname-match-p file "snap-*") 
 		 (or (null snap)
 		     (> (file-write-date file) (file-write-date snap))))
 	(setq snap file)))
-    snap))
+    (if snap
+	(values snap (file-write-date snap))
+	(values nil nil))))
   
 (defun find-transactions (store timestamp)
-  (let ((transaction-logs nil))
-    (dolist (file (directory (make-pathname :directory (location store)
+  (let ((transaction-logs nil) 
+	(location (if (pathnamep (location store)) (namestring (location store))
+		      (location store))))
+    (dolist (file (directory (make-pathname :directory location
 					    :name :wild :type :wild)))
+      (format t "Looking for transactions: ~A~%" file)
       (when (and (pathname-match-p file "tx-*") 
 		 (> (file-write-date file) timestamp))
 	(push file transaction-logs)))
-    (sort transaction-logs #'< :key #'file-write-date)))
+    (when transaction-logs
+      (sort transaction-logs #'string< 
+	    :key #'(lambda (x y)
+		     (let ((pieces-x (cl-ppcre:split "\-" x))
+			   (pieces-y (cl-ppcre:split "\-" y))) 
+		       (and (>= (parse-integer (nth 1 pieces-y))
+				(parse-integer (nth 1 pieces-x)))
+			    (> (parse-integer (nth 2 pieces-y))
+			       (parse-integer (nth 2 pieces-x))))))))))
 
 (defun replay-transactions (file &optional (store *store*))
   (let ((*store* store))
@@ -39,13 +55,16 @@
 
 (defun restore-triple-store (store)
   (let ((*store* store))
-    (sb-ext:with-locked-hash-table ((main-idx store))
-      (multiple-value-bind (snapshot-file imestamp) (find-newest-snapshot store)
+    (with-locked-index ((main-idx store))
+      (multiple-value-bind (snapshot-file timestamp) (find-newest-snapshot store)
+	(format t "Restoring form snapshot file ~A~%" snapshot-file)
 	(with-open-file (stream snapshot-file :element-type '(unsigned-byte 8))
 	  (do ((code (read-byte stream nil :eof) (read-byte stream nil :eof)))
-	      ((or (eql code :eof) (null code)))
-	    (format t "CODE ~A: ~A~%" code (deserialize code stream))))
+	      ((or (eql code :eof) (null code) (= code 0)))
+	    (format t "GOT CODE 0x~X~%" code)
+	    (format t "   -> ~A~%" (deserialize code stream))))
 	(dolist (file (find-transactions store timestamp))
+	  (format t "REPLAYING TX ~A~%" file)
 	  (replay-transactions file))
 	(do-indexing store)
 	store))))
@@ -57,16 +76,17 @@
 		   :element-type '(unsigned-byte 8)
 		   :if-exists :overwrite
 		   :if-does-not-exist :create)
-    (sb-ext:with-locked-hash-table ((main-idx store))
+    (with-locked-index ((main-idx store))
       (maphash #'(lambda (id triple)
 		   (declare (ignore id))
 		   (when (persistent? triple)
 		     (serialize triple stream)))
 	       (gethash :id-idx (index-table (main-idx store)))))
-    (write-byte 0 stream)))
+    (write-byte 0 stream)
+    (force-output stream)))
 
 (defun dump-transaction (stream tx)
-  (when tx
+  (when (and (transaction? tx) (tx-queue tx))
     (logger :info "Dumping tx ~A to ~A" tx stream)
     (serialize-action :transaction stream tx)
     (force-output stream)))
@@ -76,7 +96,7 @@
   (open (format nil "~A/tx-~A" (location store) (get-universal-time))
 	:element-type '(unsigned-byte 8)
 	:direction :output 
-	:if-exists :append
+	:if-exists :rename
 	:if-does-not-exist :create))
 
 (defun set-dirty (store)
@@ -100,53 +120,51 @@
     (when (pathname-match-p file "snap-*")
       (delete-file file))))
 
+(defun record-tx (tx store)
+  (when (and (transaction? tx) (tx-queue tx))
+    (with-open-file (stream (format nil "~A/tx-~A-~A" (location store) 
+				    (get-universal-time) (incf *file-counter*))
+			    :element-type '(unsigned-byte 8) :direction :output
+			    :if-exists :rename :if-does-not-exist :create)
+      (set-dirty store)
+      (dump-transaction stream tx))))
+    ;;(sb-concurrency:send-message mailbox :snapshot)))
+
 (defun start-logger (store)
   (make-thread 
    #'(lambda ()
        (handler-case
-	   (let ((mailbox (sb-concurrency:make-mailbox)) (last-snapshot (gettimeofday))
-		 (stream (roll-logfile store nil)))
+	   (let ((mailbox (sb-concurrency:make-mailbox)) (*file-counter* 1)
+		 (last-snapshot (gettimeofday)))
 	     (setf (log-mailbox store) mailbox)
-	     (unwind-protect
-		  (loop
-		     (let ((msg (sb-concurrency:receive-message mailbox)))
-		       (logger :info "tx-log thread received message ~A" msg)
-		       (typecase msg
-			 (transaction 
-			  (progn
-			    (set-dirty store)
-			    (dump-transaction stream msg)
-			    (sb-concurrency:send-message mailbox :snapshot)))
-			 (keyword 
-			  (case msg 
-			    (:shutdown-and-clear
-			     (close stream)
-			     (clear-tx-log store)
-			     (clear-snapshots store)
-			     (set-clean store)
-			     (quit))
-			    (:shutdown 
-			     (dolist 
-				 (msg 
-				   (sb-concurrency:receive-pending-messages mailbox))
-			       (when (transaction? msg)
-				 (dump-transaction stream msg)))
-			     (close stream)
-			     (snapshot store)
-			     (set-clean store)
-			     (quit))
-			    (:snapshot 
-			     (when (> 600 (- (gettimeofday) last-snapshot))
-			       (roll-logfile store stream)
-			       (snapshot store)
-			       (set-clean store)
-			       (setq last-snapshot (gettimeofday))))
-			    (otherwise 
-			     (logger :info 
-				     "Unknown command to tx-log thread: ~A" msg))))))
-		     (when (>= (file-length stream) *max-log-file-length*)
-		       (setq stream (roll-logfile store stream))))
-	       (when (and (streamp stream) (open-stream-p stream)) (close stream))))
+	     (loop
+		(let ((msg (sb-concurrency:receive-message mailbox)))
+		  (logger :info "tx-log thread received message ~A" msg)
+		  (typecase msg
+		    (transaction (record-tx msg store))
+		    (keyword 
+		     (case msg 
+		       (:shutdown-and-clear
+			(clear-tx-log store)
+			(clear-snapshots store)
+			(set-clean store)
+			(quit))
+		       (:shutdown 
+			(dolist 
+			    (msg 
+			      (sb-concurrency:receive-pending-messages mailbox))
+			  (when (transaction? msg)
+			    (record-tx msg store)))
+			(snapshot store)
+			(set-clean store)
+			(quit))
+		       (:snapshot 
+			;;(when (> 600 (- (gettimeofday) last-snapshot))
+			(snapshot store)
+			(set-clean store)
+			(setq last-snapshot (gettimeofday)))
+		       (otherwise 
+			(logger :info "Unknown msg to tx-log thread: ~A" msg))))))))
 	 (error (condition)
 	   (logger :err "Unhandled error in tx logger for ~A: ~A" store condition))))
    :name (format nil "tx-log thread for ~A" store)))
@@ -157,7 +175,8 @@
        (flet ((atomic-op ()
                 ,@body))
          (cond ((and (transaction? *current-transaction*)
-		     (equal (name (tx-store *current-transaction*)) (name ,store)))
+		     (equal (store-name (tx-store *current-transaction*)) 
+			    (store-name ,store)))
 		(atomic-op))
 	       ((transaction? *current-transaction*)
 		(error "Transactions cannot currently span multiple stores."))
@@ -165,7 +184,7 @@
 		(let ((*current-transaction* (make-transaction :store ,store)))
 		  ;; Global serialization is not ideal.
 		  (prog1
-		      (sb-ext:with-locked-hash-table ((main-idx ,store))
+		      (with-locked-index ((main-idx ,store))
 			(atomic-op))
 		    (sb-concurrency:send-message (log-mailbox ,store)
 						 *current-transaction*)
