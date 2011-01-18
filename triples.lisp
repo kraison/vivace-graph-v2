@@ -180,6 +180,20 @@
   (cursor-value (get-from-index (main-idx store) :id-idx id)))
   ;;(gethash id (id-idx store)))
 
+(defun list-triples (&optional (store *store*))
+  (let ((triples nil))
+    (maphash #'(lambda (id triple)
+		 (when (not (deleted? triple)) (push triple triples)))
+	     (gethash :id-idx (index-table (main-idx store))))
+    triples))
+
+(defun triple-count (&optional (store *store*))
+  (let ((triple-count 0))
+    (maphash #'(lambda (id triple)
+		 (when (not (deleted? triple)) (incf triple-count)))
+	     (gethash :id-idx (index-table (main-idx store))))
+    triple-count))
+
 (defun get-triples (&key s p o (g *graph*) (store *store*))
   "Returns a cursor to the results."
   (multiple-value-bind (s p o g) (intern-spog s p o g)
@@ -207,6 +221,9 @@
 	   (get-from-index (main-idx store) :ospgi-idx o))
 	  (p
 	   (get-from-index (main-idx store) :posgi-idx p))
+	  ((and (null s) (null p) (null o) (null g))
+	   (get-from-index (main-idx store) :gspoi-idx))
+	   ;;(list-triples))
 	  (t 
 	   (error "Other combinations of spogi to be implemented later.")))))
 
@@ -224,20 +241,6 @@
 	    (let ((triples (remove-if #'deleted? triples)))
 	      (subseq triples 0 (if (> (length triples) limit) limit)))
 	    (remove-if #'deleted? triples)))))
-
-(defun list-triples (&optional (store *store*))
-  (let ((triples nil))
-    (maphash #'(lambda (id triple)
-		 (when (not (deleted? triple)) (push triple triples)))
-	     (gethash :id-idx (index-table (main-idx store))))
-    triples))
-
-(defun triple-count (&optional (store *store*))
-  (let ((triple-count 0))
-    (maphash #'(lambda (id triple)
-		 (when (not (deleted? triple)) (incf triple-count)))
-	     (gethash :id-idx (index-table (main-idx store))))
-    triple-count))
 
 (defun clear-graph (&optional (name *graph*))
   (with-graph-transaction (*store*)

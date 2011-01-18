@@ -1,5 +1,8 @@
 (in-package #:vivace-graph-v2)
 
+;; The foundation of the serialization code comes from Sonja Keene's "Object-Oriented 
+;; Programming in Common Lisp."  Thanks Sonja!
+
 (defgeneric deserialize (code stream))
 (defgeneric deserialize-action (code stream))
 

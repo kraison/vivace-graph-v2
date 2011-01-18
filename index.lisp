@@ -22,7 +22,7 @@
   (handler-case
       (funcall transform-fn
 	       (aref (index-cursor-vector cursor) (index-cursor-pointer cursor)))
-    (SB-INT:INVALID-ARRAY-INDEX-ERROR (condition)
+    (sb-int:invalid-array-index-error (condition)
       (declare (ignore condition))
       nil)))
 
@@ -31,7 +31,7 @@
       (funcall transform-fn
 	       (aref (index-cursor-vector cursor) 
 		     (incf (index-cursor-pointer cursor))))
-    (SB-INT:INVALID-ARRAY-INDEX-ERROR (condition)
+    (sb-int:invalid-array-index-error (condition)
       (declare (ignore condition))
       (decf (index-cursor-pointer cursor))
       nil)))
@@ -41,7 +41,7 @@
       (funcall transform-fn 
 	       (aref (index-cursor-vector cursor) 
 		     (decf (index-cursor-pointer cursor))))
-    (SB-INT:INVALID-ARRAY-INDEX-ERROR (condition)
+    (sb-int:invalid-array-index-error (condition)
       (declare (ignore condition))
       (incf (index-cursor-pointer cursor))
       nil)))
@@ -70,7 +70,8 @@
 
 (defun hash-table-keys (ht)
   (let ((keys nil))
-    (maphash #'(lambda (k v) (declare (ignore v)) (push k keys)) ht)
+    (sb-ext:with-locked-hash-table (ht)
+      (maphash #'(lambda (k v) (declare (ignore v)) (push k keys)) ht))
     keys))
 
 (defun fetch-all-leaves (ht)
@@ -94,19 +95,21 @@
   (let ((vals nil))
     (labels ((descend (ht keys)
 	       (if (eq (first keys) '*)
-		   (maphash #'(lambda (k v) 
-				(declare (ignore k)) 
-				(descend v (rest keys))) ht)
+		   (sb-ext:with-locked-hash-table (ht)
+		     (maphash #'(lambda (k v) 
+				  (declare (ignore k)) 
+				  (descend v (rest keys))) ht))
 		   (multiple-value-bind (value found?) (gethash (first keys) ht)
 		     (when found?
 		       (if (hash-table-p value)
 			   (if (null (rest keys))
 			       (progn
 				 (when return-values?
-				   (maphash #'(lambda (k v) 
-						(declare (ignore k)) 
-						(push v vals)) 
-					    value))
+				   (sb-ext:with-locked-hash-table (value)
+				     (maphash #'(lambda (k v) 
+						  (declare (ignore k)) 
+						  (push v vals)) 
+					      value)))
 				 (remhash (first keys) ht))
 			       (descend value (rest keys)))
 			   (remhash (first keys) ht)))))))
@@ -116,12 +119,13 @@
 (defun descend-ht (ht keys)
   (assert (not (null keys)) nil "keys must be non-null.")
   (if (eq (first keys) '*)
-      (maphash #'(lambda (k v) 
-		   (declare (ignore k)) 
-		   (if (hash-table-p v)
-		       (descend-ht v (rest keys))
-		       ()))
-	       ht)
+      (sb-ext:with-locked-hash-table (ht)
+	(maphash #'(lambda (k v) 
+		     (declare (ignore k)) 
+		     (if (hash-table-p v)
+			 (descend-ht v (rest keys))
+			 ()))
+		 ht))
       (multiple-value-bind (value found?) (gethash (first keys) ht)
 	(if found?
 	    (if (hash-table-p value)
@@ -178,7 +182,7 @@
 	 ,@body)))
 
 (defun test-index ()
-  (let ((index (make-hierarchical-index)))
+  (let ((index (make-hierarchical-index :test 'equal)))
     (add-to-index index "abc" "a" "b" "c")
     (add-to-index index "abd" "a" "b" "d")
     (add-to-index index "abe" "a" "b" "e")
