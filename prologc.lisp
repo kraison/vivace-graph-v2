@@ -27,8 +27,8 @@
 (defun bound-p (var) (not (eq (var-binding var) +unbound+)))
 
 (defgeneric prolog-equal (x y)
-  (:documentation "Generic equality operator for prolog unification. Specialize this for new 
-types that will be stored in the db.")
+  (:documentation "Generic equality operator for prolog unification. Specialize this 
+for new types that will be stored in the db.")
   (:method ((x number) (y number)) (= x y))
   (:method ((x string) (y string)) (string= x y))
   (:method ((x character) (y character)) (char= x y))
@@ -67,10 +67,6 @@ types that will be stored in the db.")
 
 (defmethod clause-head ((list list))
   (first list))
-
-(defmacro compile-it (functor predicates &body body)
-  `#'(lambda (,@predicates cont)
-       (block ,functor ,@body)))
 
 (defun prolog-compile-help (functor clauses)
   (let ((arity (relation-arity (clause-head (first clauses)))))
@@ -473,7 +469,7 @@ types that will be stored in the db.")
      (with-graph-transaction (*store*)
        (dolist (triple ',triples)
 	 (add-triple (first triple) (second triple) (third triple) 
-		     (or (fourth triple) *graph*))
+		     :graph (or (fourth triple) *graph*))
 	 (incf count))
        (do-indexing))
      count))
@@ -565,6 +561,9 @@ types that will be stored in the db.")
   `(select () ,@goals))
 
 (defmacro map-query (fn query &key collect?)
+  "Maps fn over the results of query:
+collect? will return a list of the results of each application of fn.
+Warning:  you get the raw."
   (let* ((top-level-query (gensym "PROVE"))
 	 (vars (cadr query))
 	 (goals (replace-?-vars (cddr query)))
@@ -585,7 +584,7 @@ types that will be stored in the db.")
 				     (compile-clause nil clause 'cont))
 				 `(((,top-level-query)
 				    ,@goals
-				    (map-query ,fn ',vars ,collect?))))))
+				    (map-query ,fn ,vars ,collect?))))))
 			 (undefined-function (condition)
 			   (error 'prolog-error :reason condition))))))
 	      (set-functor-fn *functor* func)
@@ -596,9 +595,11 @@ types that will be stored in the db.")
 (defun valid-prolog-query? (form)
   (case (first form)
     (select t)
+    (select-one t)
     (select-flat t)
+    (select-first t)
     (<- t)
-    (insert t)
+    (insertt)
     (otherwise nil)))
 
 

@@ -14,7 +14,7 @@
 	       :sb-posix
 	       :cffi
 	       :bordeaux-threads
-	       ;;:cl-btree-0.3
+	       ;;:cl-btree-0.5
 	       :cl-skip-list
 	       :hunchentoot
 	       :uuid
@@ -33,7 +33,8 @@
 	       (:file "constants" :depends-on ("conditions"))
 	       (:file "globals" :depends-on ("constants"))
 	       (:file "utilities" :depends-on ("globals"))
-	       (:file "data-types" :depends-on ("utilities"))
+	       (:file "lock" :depends-on ("utilities"))
+	       (:file "data-types" :depends-on ("lock"))
 	       (:file "certainty-factors" :depends-on ("constants"))
 	       (:file "serialize" :depends-on ("data-types"))
 	       (:file "deserialize" :depends-on ("serialize"))
@@ -46,6 +47,4 @@
 	       (:file "triples" :depends-on ("functor" "gettimeofday"))
 	       (:file "prologc" :depends-on ("triples"))
 	       (:file "prolog-functors" :depends-on ("prologc"))
-	       (:file "templates" :depends-on ("prolog-functors"))
-	       ))
-
+	       (:file "templates" :depends-on ("prolog-functors"))))

@@ -20,6 +20,7 @@
 	   #:do-indexing
 	   #:with-graph-transaction
 	   #:with-locked-index
+	   #:get-table-to-lock
 	   #:*current-transaction*
 	   #:*in-transaction-p
 	   #:main-idx

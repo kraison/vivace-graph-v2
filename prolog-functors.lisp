@@ -220,20 +220,21 @@ comprehensive regex."
     (funcall cont))
 
   (def-global-prolog-functor map-query/3 (fn vars collect? cont)
-    (format t "FN (~A) IS ~A~%COLLECT? is ~A~%" (type-of fn) fn collect?)
+    (when *prolog-trace*
+      (format t "TRACE: MAP-QUERY/3 FN (~A) IS ~A~%COLLECT? is ~A~%" 
+	      (type-of fn) fn collect?))
     (if (null vars)
 	nil
-	(let ((result 
-	       (eval `(apply
-		       ,fn 
-		       ,(loop 
-			   for var in vars
-			   collect (let ((v (deref-exp var)))
-				     (if (and (symbolp v) 
-					      (eq graph-pkg (symbol-package v)))
-					 (symbol-name v)
-					 v)))))))
-	  (if collect? (push result *select-list*))))
+	(let ((new-vars
+	       (loop 
+		  for var in vars
+		  collect (let ((v (deref-exp var)))
+			    (if (and (symbolp v) 
+				     (eq graph-pkg (symbol-package v)))
+				(symbol-name v)
+				v)))))
+	  (let ((result (eval `(apply ,fn ',new-vars))))
+	    (if collect? (push result *select-list*)))))
     (funcall cont)))
 
 (def-global-prolog-functor q-/4 (s p o g cont)

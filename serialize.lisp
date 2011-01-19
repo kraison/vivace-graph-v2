@@ -92,14 +92,27 @@
   (serialize (cf triple) stream))
 
 (defmethod serialize-action ((action (eql :add-triple)) stream &rest args)
+  (logger :debug "Serialize-action ~A: ~A~%" action args)
   (write-byte +add-triple+ stream)
-  (serialize (nth 0 args) stream)  ;; subject
-  (serialize (nth 1 args) stream)  ;; predicate
-  (serialize (nth 2 args) stream)  ;; object
-  (serialize (nth 3 args) stream)  ;; graph
-  (serialize (nth 4 args) stream)  ;; id
-  (serialize (nth 5 args) stream)  ;; deleted?
-  (serialize (nth 6 args) stream)) ;; cf
+  (if (triple? (first args))  
+      ;; We generally want to avoid this, as the triple could change between requested
+      ;; serialization and actual serialization.
+      (let ((triple (first args)))
+	(serialize (subject triple) stream)
+	(serialize (predicate triple) stream)
+	(serialize (object triple) stream)
+	(serialize (graph triple) stream)
+	(serialize (id triple) stream)
+	(serialize (deleted? triple) stream)
+	(serialize (cf triple) stream))
+      (progn
+	(serialize (nth 0 args) stream)  ;; subject
+	(serialize (nth 1 args) stream)  ;; predicate
+	(serialize (nth 2 args) stream)  ;; object
+	(serialize (nth 3 args) stream)  ;; graph
+	(serialize (nth 4 args) stream)  ;; id
+	(serialize (nth 5 args) stream)  ;; deleted?
+	(serialize (nth 6 args) stream)))) ;; cf
 
 (defmethod serialize-action ((action (eql :delete-triple)) stream &rest args)
   (write-byte +delete-triple+ stream)
@@ -118,10 +131,11 @@
 (defmethod serialize-action ((action (eql :transaction)) stream &rest args)
   (write-byte +transaction+ stream)
   (let ((tx (nth 0 args)))
-    (serialize (length tx) stream)
-    (dolist (action tx)
+    ;;(serialize (length (tx-queue tx)) stream)  
+    (dolist (a (reverse (tx-queue tx)))
+      (logger :info "TX: serializing ~A / ~A~%" (first a) (rest a))
       (apply #'serialize-action 
-	     (nconc (list (first action) stream) (rest action))))))
+	     (nconc (list (first a) stream) (rest a))))))
 
 (defun test-serializer (file)
   (with-open-file (stream file

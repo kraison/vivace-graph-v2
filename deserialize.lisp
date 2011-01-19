@@ -115,6 +115,11 @@
 	(cf (deserialize (read-byte stream) stream)))
     (%add-triple subject predicate object id graph cf deleted?)))
 
+(defmethod deserialize-action ((code (eql +transaction+)) (stream stream))
+  (do ((code (read-byte stream nil :eof) (read-byte stream nil :eof)))
+      ((or (eql code :eof) (null code)))
+    (deserialize-action code stream)))
+
 (defmethod deserialize-action ((code (eql +add-triple+)) stream)
   (let ((subject (deserialize (read-byte stream) stream))
 	(predicate (deserialize (read-byte stream) stream))

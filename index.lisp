@@ -60,13 +60,14 @@
 	     (funcall fn (aref (index-cursor-vector cursor) i))))
     (nreverse result)))
   
-(defstruct index name table test)
+(defstruct index name table test locks)
 
 ;;(defun make-hierarchical-index (&key name (test 'idx-equal))
 (defun make-hierarchical-index (&key name (test 'eql))
   (make-index :name name
 	      :test test
-	      :table (make-hash-table :test test :synchronized t)))
+	      :table (make-hash-table :test test :synchronized t)
+	      :locks (make-hash-table :synchronized t :test 'equal)))
 
 (defun hash-table-keys (ht)
   (let ((keys nil))
@@ -166,20 +167,23 @@
 (defun delete-from-index (index value &rest keys)
   (declare (ignore index value keys)))
 
+(defun get-table-to-lock (idx &rest keys)
+  (find-or-create-ht (index-table idx)
+		     keys 
+		     #'(lambda ()
+			 (make-hash-table :synchronized t 
+					  :test (index-test idx)))))
+
 (defmacro with-locked-index ((idx &rest keys) &body body)
   (if keys
       (with-gensyms (sub-idx last-key)
-	`(multiple-value-bind (,sub-idx ,last-key)
-	     (find-or-create-ht (index-table ,idx)
-				',keys 
-				#'(lambda ()
-				    (make-hash-table :synchronized t 
-						     :test (index-test ,idx))))
+	`(multiple-value-bind (,sub-idx ,last-key) (get-table-to-lock ,idx ,@keys)
 	   (sb-ext:with-locked-hash-table (,sub-idx)
 	     ;;(format t "Locked ht ~A / ~A~%" ,last-key ,sub-idx)
 	     ,@body)))
       `(sb-ext:with-locked-hash-table ((index-table ,idx))
 	 ,@body)))
+
 
 (defun test-index ()
   (let ((index (make-hierarchical-index :test 'equal)))
@@ -192,5 +196,3 @@
     (add-to-index index "acy" "a" "c" "y")
     (add-to-index index "bcy" "b" "c" "y")
     (get-from-index index "a" "b")))
-
-

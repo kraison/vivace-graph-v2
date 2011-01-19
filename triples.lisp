@@ -128,7 +128,6 @@
     (let ((cursor (get-from-index (main-idx *store*) 
 				  :gspoi-idx graph subject predicate object)))
       (if (cursor-value cursor)
-	  ;;(let ((triple (gethash (cursor-value cursor) (id-idx *store*))))
 	  (let ((triple (get-from-index (main-idx *store*) 
 					:id-idx (cursor-value cursor))))
 	    (when (triple? triple)
@@ -168,9 +167,9 @@
 				    :cf (or cf +cf-true+)
 				    :persistent? persistent?
 				    :id id)))
-	   (push (list :add-triple triple) (tx-queue *current-transaction*))
+	   (push (list :add-triple subject predicate object graph id nil (cf triple))
+		 (tx-queue *current-transaction*))
 	   (add-to-index (main-idx *store*) triple :id-idx id)
-	   ;;(setf (gethash (id triple) (id-idx store)) triple)
 	   (if index-immediate?
 	       (index-triple triple *store*)
 	       (enqueue-triple-for-indexing triple))
@@ -182,16 +181,19 @@
 
 (defun list-triples (&optional (store *store*))
   (let ((triples nil))
-    (maphash #'(lambda (id triple)
-		 (when (not (deleted? triple)) (push triple triples)))
-	     (gethash :id-idx (index-table (main-idx store))))
+    (with-locked-index ((main-idx store))
+      (maphash #'(lambda (id triple)
+		   (declare (ignore id))
+		   (when (not (deleted? triple)) (push triple triples)))
+	       (gethash :id-idx (index-table (main-idx store)))))
     triples))
 
 (defun triple-count (&optional (store *store*))
   (let ((triple-count 0))
-    (maphash #'(lambda (id triple)
-		 (when (not (deleted? triple)) (incf triple-count)))
-	     (gethash :id-idx (index-table (main-idx store))))
+    (with-locked-index ((main-idx store))
+      (maphash #'(lambda (id triple)
+		   (when (not (deleted? triple)) (incf triple-count)))
+	       (gethash :id-idx (index-table (main-idx store)))))
     triple-count))
 
 (defun get-triples (&key s p o (g *graph*) (store *store*))
@@ -223,7 +225,6 @@
 	   (get-from-index (main-idx store) :posgi-idx p))
 	  ((and (null s) (null p) (null o) (null g))
 	   (get-from-index (main-idx store) :gspoi-idx))
-	   ;;(list-triples))
 	  (t 
 	   (error "Other combinations of spogi to be implemented later.")))))
 
@@ -269,6 +270,27 @@
     (when (triple? triple)
       (cas (triple-deleted? triple) (triple-deleted? triple) timestamp))))
 
+(defun %index-triple (triple &optional (store *store*))
+  (add-to-index (main-idx store) triple :id-idx (id triple))
+  (add-to-index (main-idx store) (id triple) :gspoi-idx
+		(graph triple) (subject triple) (predicate triple) (object triple))
+  (add-to-index (main-idx store) (id triple) :spogi-idx
+		(subject triple) (predicate triple) (object triple) (graph triple))
+  (add-to-index (main-idx store) (id triple) :posgi-idx
+		(predicate triple) (object triple) (subject triple) (graph triple))
+  (add-to-index (main-idx store) (id triple) :ospgi-idx
+		(object triple) (subject triple) (predicate triple) (graph triple))
+  (add-to-index (main-idx store) (id triple) :gposi-idx
+		(graph triple) (predicate triple) (object triple) (subject triple))
+  (add-to-index (main-idx store) (id triple) :gospi-idx
+		(graph triple) (object triple) (subject triple) (predicate triple))
+  (when (index-predicate? (predicate triple))
+    (add-to-text-index (text-idx *store*)
+		       (make-text-idx-key (graph triple) (subject triple) 
+					  (predicate triple) (object triple))
+		       (id triple)))
+  triple)
+
 (defun %add-triple (subject predicate object id graph cf deleted?)
   (let ((triple (make-triple :subject subject
 			     :predicate predicate
@@ -278,9 +300,7 @@
 			     :id id
 			     :persistent? t
 			     :deleted? deleted?)))
-    ;;(setf (gethash (id triple) (id-idx *store*)) triple)
-    (add-to-index (main-idx *store*) triple :id-idx (id triple))
-    (enqueue-triple-for-indexing triple)
+    (%index-triple triple)
     triple))
   
 (defun dump-triples (file &optional (store *store*))

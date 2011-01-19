@@ -42,7 +42,7 @@
 (defun make-fresh-store (name location)
   (let ((store
 	 (make-instance 'local-triple-store
-			:name name
+ 			:name name
 			:location location
 			:main-idx (make-hierarchical-index)
 			;;:spogi-idx (make-hierarchical-index)
