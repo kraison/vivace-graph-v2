@@ -177,6 +177,15 @@
 	   (logger :err "Unhandled error in tx logger for ~A: ~A" store condition))))
    :name (format nil "tx-log thread for ~A" store)))
 
+(defun release-all-locks (tx)
+  (sb-ext:with-locked-hash-table ((locks *store*))
+    (dolist (pair (tx-locks tx))
+      (destructuring-bind (pattern lock) pair
+	(when (= 0 (lock-readers lock))
+	  (unlock-pattern pattern)
+	  (release-pool-lock (lock-pool *store*) lock)
+	  (release-write-lock lock))
+
 (defmacro with-graph-transaction ((store) &body body)
   (with-gensyms (success retries condition)
     `(let ((,success nil) (,retries 0))
@@ -190,14 +199,16 @@
 		(error "Transactions cannot currently span multiple stores."))
 	       (t
 		(let ((*current-transaction* (make-transaction :store ,store)))
-		  ;; Global serialization is not ideal. Lock triples as we go?
-		  (with-locked-index ((main-idx ,store))
-		    (prog1
-			(handler-case
-			    (atomic-op)
-			  (error (,condition)
-			    (incf ,retries)
-			    ,condition)) ;; FIXME:  add rollback and/or retry.
+		  (prog1
+		      (unwind-protect
+			   (handler-case
+			       (progn
+				 (atomic-op)
+				 (setf ,success t))
+			     (error (,condition)
+			       (incf ,retries)
+			       ,condition)) ;; FIXME:  add rollback and/or retry.
+			(release-all-locks *current-transaction*))
+		    (when ,success
 		      (sb-concurrency:send-message (log-mailbox ,store)
-						   *current-transaction*)
-		      (setf ,success t))))))))))
+						   *current-transaction*))))))))))

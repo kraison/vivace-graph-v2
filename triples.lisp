@@ -75,6 +75,7 @@
 
 (defun index-triple (triple &optional (store *store*))
   (with-graph-transaction (store)
+    (pushnew (lock-triple triple :kind :write) (tx-locks *current-transaction*))
     (add-to-index (main-idx store) triple :id-idx (id triple))
     (add-to-index (main-idx store) (id triple) :gspoi-idx
 		  (graph triple) (subject triple) (predicate triple) (object triple))

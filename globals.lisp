@@ -4,6 +4,8 @@
 (defparameter *store-table* (make-hash-table :synchronized t :test 'eql))
 (defparameter *namespaces* (make-hash-table :synchronized t :test 'equalp))
 
+(defparameter *read-uncommitted* t)
+
 ;; Graphs
 (defvar *graph* nil)
 (defvar *graph-table* nil)

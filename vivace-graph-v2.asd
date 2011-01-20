@@ -27,13 +27,17 @@
 	       :cl-js
 	       :cl-json)
   :components ((:file "uuid")
+	       (:file "sb-impl")
+	       (:file "sb-thread")
 	       (:file "vivace-graph-v2-package" :depends-on ("uuid"))
+	       (:file "hash-table" 
+		      :depends-on ("vivace-graph-v2-package" "sb-impl" "sb-thread"))
 	       (:file "gettimeofday" :depends-on ("vivace-graph-v2-package"))
 	       (:file "conditions" :depends-on ("vivace-graph-v2-package"))
 	       (:file "constants" :depends-on ("conditions"))
 	       (:file "globals" :depends-on ("constants"))
 	       (:file "utilities" :depends-on ("globals"))
-	       (:file "lock" :depends-on ("utilities"))
+	       (:file "lock" :depends-on ("utilities" "hash-table"))
 	       (:file "data-types" :depends-on ("lock"))
 	       (:file "certainty-factors" :depends-on ("constants"))
 	       (:file "serialize" :depends-on ("data-types"))

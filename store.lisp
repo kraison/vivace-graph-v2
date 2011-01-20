@@ -4,14 +4,7 @@
   ((name :initarg :name :accessor store-name)))
 
 (defclass local-triple-store (triple-store)
-  (;;(spogi-idx :initarg :spogi-idx :accessor spogi-idx)
-   ;;(posgi-idx :initarg :posgi-idx :accessor posgi-idx)
-   ;;(ospgi-idx :initarg :ospgi-idx :accessor ospgi-idx)
-   ;;(gspoi-idx :initarg :gspoi-idx :accessor gspoi-idx)
-   ;;(gposi-idx :initarg :gposi-idx :accessor gposi-idx)
-   ;;(gospi-idx :initarg :gospi-idx :accessor gospi-idx)
-   ;;(id-idx :initarg :id-idx :accessor id-idx)
-   (main-idx :initarg :main-idx :accessor main-idx)
+  ((main-idx :initarg :main-idx :accessor main-idx)
    (text-idx :initarg :text-idx :accessor text-idx)
    (log-mailbox :initarg :log-mailbox :accessor log-mailbox)
    (index-queue :initarg :index-queue :accessor index-queue)
@@ -19,6 +12,8 @@
    (indexed-predicates :initarg :indexed-predicates :accessor indexed-predicates)
    (templates :initarg :templates :accessor templates)
    (location :initarg :location :accessor location)
+   (lock-pool :initarg :lock-pool :accessor lock-pool)
+   (locks :initarg :locks :accessor locks)
    (logger-thread :initarg :logger-thread :accessor logger-thread)))
 
 (defclass remote-triple-store (triple-store)
@@ -39,19 +34,14 @@
     (maphash #'(lambda (k v) (when v (push k result))) (indexed-predicates store))
     (sort result #'string>)))
 
-(defun make-fresh-store (name location)
+(defun make-fresh-store (name location &key (num-locks 20))
   (let ((store
 	 (make-instance 'local-triple-store
  			:name name
 			:location location
 			:main-idx (make-hierarchical-index)
-			;;:spogi-idx (make-hierarchical-index)
-			;;:posgi-idx (make-hierarchical-index)
-			;;:ospgi-idx (make-hierarchical-index)
-			;;:gspoi-idx (make-hierarchical-index)
-			;;:gposi-idx (make-hierarchical-index)
-			;;:gospi-idx (make-hierarchical-index)
-			;;:id-idx (make-uuid-table :synchronized t)
+			:lock-pool (make-lock-pool num-locks)
+			:locks (make-hash-table :synchronized t :test 'equal)
 			:text-idx (make-skip-list :key-equal 'equalp
 						  :value-equal 'uuid:uuid-eql
 						  :duplicates-allowed? t)
@@ -122,4 +112,47 @@
 
 (defun add-to-delete-queue (thing &optional (store *store*))
   (sb-concurrency:enqueue thing (delete-queue store)))
+
+(defun lock-pattern (subject predicate object graph &key (kind :write) (store *store*))
+  (let ((lock nil) (pattern (list subject predicate object graph)))
+    (sb-ext:with-locked-hash-table ((locks store))
+      (setq lock 
+	    (or (gethash pattern (locks store))
+		(setf (gethash pattern store) (get-pool-lock (lock-pool store))))))
+    (if (rw-lock? lock)
+	(if (eq kind :write)
+	    (acquire-write-lock lock)
+	    (acquire-read-lock lock))
+	(error "Unable to get lock for ~A" pattern))))
+
+(defun lock-triple (triple &key (kind :write) (store *store*))
+  (lock-pattern (subject triple) 
+		(predicate triple) 
+		(object triple) 
+		(graph triple)
+		:kind kind
+		:store store))
+
+(defun unlock-pattern (subject predicate object graph &key kind (store *store*))
+  (let ((pattern (list subject predicate object graph)))
+    (sb-ext:with-locked-hash-table ((locks store))
+      (let ((lock (gethash pattern (locks store))))
+	(when (rw-lock? lock)
+	  (sb-thread:with-recursive-lock ((lock-lock lock))
+	    (case kind
+	      (:write (release-write-lock lock))
+	      (:read  (release-read-lock lock)))
+	    (when (lock-unused? lock)
+	      (remhash pattern (locks store))
+	      (release-pool-lock (lock-pool store) lock))))))))		       
+      
+(defun unlock-triple (triple &key kind (store *store*))
+  (funcall #'unlock-pattern 
+	   (subject triple) 
+	   (predicate triple) 
+	   (object triple) 
+	   (graph triple)
+	   :kind kind
+	   :store store))
+
 
