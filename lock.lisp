@@ -10,6 +10,11 @@
   (writer nil)
   (waitqueue (sb-thread:make-waitqueue) :type sb-thread:waitqueue))
 
+(defun next-in-queue? (rw-lock thread)
+  (sb-thread:with-recursive-lock ((lock-lock rw-lock))
+    (and (not (empty-queue? (lock-writer-queue rw-lock)))
+	 (eq thread (queue-front (lock-writer-queue rw-lock))))))
+
 (defun lock-unused? (rw-lock)
   (sb-thread:with-recursive-lock ((lock-lock rw-lock))
     (and (= 0 (lock-readers rw-lock))
@@ -42,20 +47,16 @@
 
 (defun release-write-lock (rw-lock &key reading-p)
   (sb-thread:with-recursive-lock ((lock-lock rw-lock))
-    (if (eq sb-thread:*current-thread* (queue-front (lock-writer-queue rw-lock)))
+    (if (next-in-queue? rw-lock sb-thread:*current-thread*)
 	(dequeue (lock-writer-queue rw-lock))
 	(error "Cannot release lock I don't own!"))
-    (if (eq (queue-front (lock-writer-queue rw-lock)) sb-thread:*current-thread*)
+    (if (next-in-queue? rw-lock sb-thread:*current-thread*)
 	(format t "Not releasing lock;  recursive ownership detected!~%")
 	(progn
 	  (setf (lock-writer rw-lock) nil)
 	  (when reading-p
 	    (incf (lock-readers rw-lock)))
 	  (sb-thread:condition-broadcast (lock-waitqueue rw-lock))))))
-
-(defun next-in-queue? (rw-lock thread)
-  (sb-thread:with-recursive-lock ((lock-lock rw-lock))
-    (eq thread (queue-front (lock-writer-queue rw-lock)))))
 
 (defun acquire-write-lock (rw-lock &key (max-tries 1000) reading-p)
   (sb-thread:with-recursive-lock ((lock-lock rw-lock))
@@ -135,3 +136,47 @@
 		     (return-from get-pool-lock nil)
 		     (sleep 0.000000001))
 		 (return-from get-pool-lock nil)))))))
+
+#|
+(defun test-rw-locks ()
+  (let ((lock (make-rw-lock)))
+    (make-thread
+     #'(lambda () (with-write-lock (lock) 
+		    (format t "1 got write lock.  Sleeping.~%")
+		    (sleep 5)
+		    (with-write-lock (lock)
+		      (format t "1 acquired recursive lock.~%")
+		      (sleep 5)
+		      (with-write-lock (lock)
+			(format t "1 acquired recursive lock.~%")
+			(sleep 5)
+			(format t "1 releasing recursive write lock.~%"))
+		      (format t "1 releasing recursive write lock.~%"))
+		    (format t "1 releasing write lock.~%"))))
+    (make-thread 
+     #'(lambda () (with-read-lock (lock) (format t "2 got read lock~%") (sleep 5))))
+    (make-thread 
+     #'(lambda () (with-read-lock (lock) (format t "3 got read lock~%") (sleep 5))))
+    (make-thread
+     #'(lambda () (with-write-lock (lock) 
+		    (format t "4 got write lock.  Sleeping.~%")
+		    (sleep 5)
+		    (with-write-lock (lock)
+		      (format t "4 acquired recursive lock.~%")
+		      (sleep 5)
+		      (with-write-lock (lock)
+			(format t "4 acquired recursive lock.~%")
+			(sleep 5)
+			(format t "4 releasing recursive write lock.~%"))
+		      (format t "4 releasing recursive write lock.~%"))
+		    (format t "4 releasing write lock.~%"))))
+    (make-thread
+     #'(lambda () (with-write-lock (lock) 
+		    (format t "5 got write lock.  Sleeping.~%")
+		    (sleep 5)
+		    (format t "5 releasing write lock.~%"))))
+    (make-thread 
+     #'(lambda () (with-read-lock (lock) (format t "6 got read lock~%") (sleep 5))))
+    (make-thread 
+     #'(lambda () (with-read-lock (lock) (format t "7 got read lock~%") (sleep 5))))))
+|#

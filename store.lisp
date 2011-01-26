@@ -34,7 +34,7 @@
     (maphash #'(lambda (k v) (when v (push k result))) (indexed-predicates store))
     (sort result #'string>)))
 
-(defun make-fresh-store (name location &key (num-locks 20))
+(defun make-fresh-store (name location &key (num-locks 10000))
   (let ((store
 	 (make-instance 'local-triple-store
  			:name name
@@ -144,8 +144,8 @@
 	      (:read  (release-read-lock lock)))
 	    (when (lock-unused? lock)
 	      (remhash pattern (locks store))
-	      (release-pool-lock (lock-pool store) lock))))))))		       
-      
+	      (release-pool-lock (lock-pool store) lock))))))))
+
 (defun unlock-triple (triple &key kind (store *store*))
   (funcall #'unlock-pattern 
 	   (subject triple) 
@@ -155,4 +155,12 @@
 	   :kind kind
 	   :store store))
 
+(defmacro with-locked-pattern ((subject predicate object graph kind) &body body)
+  (with-gensyms (s p o g k)
+    `(let ((,s ,subject) (,p ,predicate) (,o ,object) (,g ,graph) (,k ,kind))
+       (unwind-protect
+	    (progn
+	      (lock-pattern ,s ,p ,o ,g :kind ,k :store *store*)
+	      ,@body)
+       (unlock-pattern ,s ,p ,o ,g :kind ,k :store *store*)))))
 

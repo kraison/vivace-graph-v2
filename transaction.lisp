@@ -180,11 +180,13 @@
 (defun release-all-locks (tx)
   (sb-ext:with-locked-hash-table ((locks *store*))
     (dolist (pair (tx-locks tx))
-      (destructuring-bind (pattern lock) pair
-	(when (= 0 (lock-readers lock))
-	  (unlock-pattern pattern)
-	  (release-pool-lock (lock-pool *store*) lock)
-	  (release-write-lock lock))
+      (destructuring-bind (pattern-or-triple lock kind) pair
+	(if (triple? pattern-or-triple)
+	    (unlock-triple triple :kind kind)
+	    (unlock-pattern pattern :kind kind))))))
+
+(defun enqueue-lock (pattern lock kind)
+  (push (list pattern lock kind) (tx-locks *current-transaction*)))
 
 (defmacro with-graph-transaction ((store) &body body)
   (with-gensyms (success retries condition)
@@ -202,13 +204,15 @@
 		  (prog1
 		      (unwind-protect
 			   (handler-case
-			       (progn
-				 (atomic-op)
+			       (prog1
+				   (atomic-op)
 				 (setf ,success t))
 			     (error (,condition)
 			       (incf ,retries)
-			       ,condition)) ;; FIXME:  add rollback and/or retry.
-			(release-all-locks *current-transaction*))
-		    (when ,success
-		      (sb-concurrency:send-message (log-mailbox ,store)
-						   *current-transaction*))))))))))
+			       ;; FIXME:  add rollback and/or retry.
+			       ,condition)) 
+			(progn
+			  (release-all-locks *current-transaction*)
+			  (when ,success
+			    (sb-concurrency:send-message 
+			     (log-mailbox ,store) *current-transaction*))))))))))))
