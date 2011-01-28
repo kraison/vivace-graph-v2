@@ -22,3 +22,9 @@
                (format stream "Deserialization failed for ~a because of ~a." 
 		       instance reason)))))
 
+(define-condition transaction-error (error)
+  ((reason :initarg :reason))
+  (:report (lambda (error stream)
+	     (with-slots (reason) error
+	       (format stream "Transaction error: ~A." reason)))))
+

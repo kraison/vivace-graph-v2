@@ -94,9 +94,12 @@
 (defun set-triple-cf (triple new-value)
   (with-graph-transaction (*store*)
     (enqueue-lock triple (lock-triple triple :kind :write) :write)
-    (when (persistent? triple)
-      (push (list :set-cf triple) (tx-queue *current-transaction*)))
-    (cas (triple-cf triple) (triple-cf triple) new-value)))
+    (let ((old-cf (triple-cf triple)))
+      (when (persistent? triple)
+	(push (list :set-cf triple) (tx-queue *current-transaction*)))
+      (push (lambda () (setf (triple-cf triple) old-value))
+	    (tx-rollback *current-transaction*))
+      (cas (triple-cf triple) (triple-cf triple) new-value))))
 
 (defun make-anonymous-node ()
   "Create a unique anonymous node."

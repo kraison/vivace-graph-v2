@@ -8,6 +8,7 @@
 	     (:conc-name tx-)
 	     (:predicate transaction?))
   (queue nil)
+  (rollback nil)
   (mailbox (sb-concurrency:make-mailbox))
   (thread (current-thread))
   (store nil)
@@ -56,7 +57,7 @@
     (with-open-file (stream file :element-type '(unsigned-byte 8))
       (let ((magic-byte (read-byte stream nil :eof)))
 	(unless (= +transaction+ magic-byte)
-	  (error "~A is not a tx file!" file))
+	  (error 'transaction-error :reason (format nil "~A is not a tx file!" file)))
 	(deserialize-action magic-byte stream)))))
 
 (defun restore-triple-store (store)
@@ -188,31 +189,43 @@
 (defun enqueue-lock (pattern lock kind)
   (push (list pattern lock kind) (tx-locks *current-transaction*)))
 
-(defmacro with-graph-transaction ((store) &body body)
-  (with-gensyms (success retries condition)
-    `(let ((,success nil) (,retries 0))
-       (flet ((atomic-op ()
-                ,@body))
-         (cond ((and (transaction? *current-transaction*)
-		     (equal (store-name (tx-store *current-transaction*)) 
-			    (store-name ,store)))
-		(atomic-op))
-	       ((transaction? *current-transaction*)
-		(error "Transactions cannot currently span multiple stores."))
-	       (t
-		(let ((*current-transaction* (make-transaction :store ,store)))
-		  (prog1
-		      (unwind-protect
-			   (handler-case
-			       (prog1
-				   (atomic-op)
-				 (setf ,success t))
-			     (error (,condition)
-			       (incf ,retries)
-			       ;; FIXME:  add rollback and/or retry.
-			       ,condition)) 
-			(progn
-			  (release-all-locks *current-transaction*)
-			  (when ,success
-			    (sb-concurrency:send-message 
-			     (log-mailbox ,store) *current-transaction*))))))))))))
+(defun rollback-tx (tx)
+  (dolist (fn (reverse (tx-rollback tx)))
+    (funcall fn)))
+
+(defun execute-tx (store fn timeout max-tries retries)
+  (if (>= retries max-tries)
+      (error 'transaction-error
+	     :reason (format nil "Unable to execute transaction. Too may retries (~A)."
+			     retries))
+      (let ((*current-transaction* (make-transaction :store store)))
+	(handler-case
+	    (sb-ext:with-timeout timeout
+	      (funcall fn))
+	  (sb-ext:timeout (condition)
+	    (declare (ignore condition))
+	    (rollback-tx *current-transaction*)
+	    (release-all-locks *current-transaction*)
+	    (execute-tx store fn timeout max-tries (1+ retries)))
+	  (error (condition)
+	    (rollback-tx *current-transaction*)
+	    (release-all-locks *current-transaction*)
+	    (error 'transaction-error 
+		   :reason (format nil "Unable to execute transaction: ~A" condition)))
+	  (:no-error (result)
+	    (sb-concurrency:send-message (log-mailbox store) *current-transaction*)
+	    (release-all-locks *current-transaction*)
+	    result)))))
+
+(defmacro with-graph-transaction ((store &key (timeout 10) (max-tries 10)) &body body)
+  (with-gensyms (atomic-op)
+    `(let ((,atomic-op (lambda () ,@body)))
+       (cond ((and (transaction? *current-transaction*)
+		   (equal (store-name (tx-store *current-transaction*)) 
+			  (store-name ,store)))
+	      (,atomic-op))
+	     ((transaction? *current-transaction*)
+	      (error 'transaction-error
+		     :reason "Transactions cannot currently span multiple stores."))
+	     (t
+	      (execute-tx ,store ,atomic-op ,timeout ,max-tries 0))))))
