@@ -30,7 +30,8 @@
   
 (defun find-transactions (store timestamp)
   (let ((transaction-logs nil) 
-	(location (if (pathnamep (location store)) (namestring (location store))
+	(location (if (pathnamep (location store)) 
+		      (namestring (location store))
 		      (location store))))
     (dolist (file (directory (make-pathname :directory location
 					    :name :wild :type :wild)))
@@ -228,4 +229,4 @@
 	      (error 'transaction-error
 		     :reason "Transactions cannot currently span multiple stores."))
 	     (t
-	      (execute-tx ,store ,atomic-op ,timeout ,max-tries 0))))))
+	      (execute-tx ,store #',atomic-op ,timeout ,max-tries 0))))))
