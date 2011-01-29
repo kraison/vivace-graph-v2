@@ -183,9 +183,15 @@
   (sb-ext:with-locked-hash-table ((locks *store*))
     (dolist (pair (tx-locks tx))
       (destructuring-bind (pattern-or-triple lock kind) pair
+	(declare (ignore lock))
 	(if (triple? pattern-or-triple)
-	    (unlock-triple triple :kind kind)
-	    (unlock-pattern pattern :kind kind))))))
+	    (unlock-triple pattern-or-triple :kind kind)
+	    (funcall #'unlock-pattern 
+		     (nth 0 pattern-or-triple)
+		     (nth 1 pattern-or-triple)
+		     (nth 2 pattern-or-triple)
+		     (nth 3 pattern-or-triple)
+		     :kind kind))))))
 
 (defun enqueue-lock (pattern lock kind)
   (push (list pattern lock kind) (tx-locks *current-transaction*)))
@@ -220,13 +226,13 @@
 
 (defmacro with-graph-transaction ((store &key (timeout 10) (max-tries 10)) &body body)
   (with-gensyms (atomic-op)
-    `(let ((,atomic-op (lambda () ,@body)))
+    `(let ((,atomic-op #'(lambda () ,@body)))
        (cond ((and (transaction? *current-transaction*)
 		   (equal (store-name (tx-store *current-transaction*)) 
 			  (store-name ,store)))
-	      (,atomic-op))
+	      (funcall ,atomic-op))
 	     ((transaction? *current-transaction*)
 	      (error 'transaction-error
 		     :reason "Transactions cannot currently span multiple stores."))
 	     (t
-	      (execute-tx ,store #',atomic-op ,timeout ,max-tries 0))))))
+	      (execute-tx ,store ,atomic-op ,timeout ,max-tries 0))))))

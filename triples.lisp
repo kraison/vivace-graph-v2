@@ -196,36 +196,36 @@
 
 (defun add-triple (subject predicate object &key (graph *graph*) (index-immediate? t) 
 		   cf (persistent? t))
-  (let ((pattern (list subject predicate object graph)))
-    (with-graph-transaction (*store*)
-      (enqueue-lock pattern (lock-pattern pattern :kind :write) :write)
-      (multiple-value-bind (subject predicate object graph) 
-	  (intern-spog subject predicate object graph)
-	(or
-	 (let ((triple (lookup-triple subject predicate object graph 
-				      :retrieve-deleted? t
-				      :already-locked? t)))
-	   (when (triple? triple)
-	     (when cf
-	       (set-triple-cf triple cf))
-	     (when (deleted? triple)
-	       (undelete-triple triple :persistent? persistent?))
-	     triple))
-	 (let ((id (uuid:make-v1-uuid)))  
-	   (let ((triple (make-triple :subject subject
-				      :predicate predicate
-				      :object object 
-				      :graph graph
-				      :cf (or cf +cf-true+)
-				      :persistent? persistent?
-				      :id id)))
-	     (push (list :add-triple subject predicate object graph id nil (cf triple))
-		   (tx-queue *current-transaction*))
-	     (add-to-index (main-idx *store*) triple :id-idx id)
-	     (if index-immediate?
-		 (index-triple triple *store*)
-		 (enqueue-triple-for-indexing triple))
-	     triple)))))))
+  (with-graph-transaction (*store*)
+    (let ((lock (lock-pattern subject predicate object graph :kind :write)))
+      (enqueue-lock (list subject predicate object graph) lock :write))
+    (multiple-value-bind (subject predicate object graph) 
+	(intern-spog subject predicate object graph)
+      (or
+       (let ((triple (lookup-triple subject predicate object graph 
+				    :retrieve-deleted? t
+				    :already-locked? t)))
+	 (when (triple? triple)
+	   (when cf
+	     (set-triple-cf triple cf))
+	   (when (deleted? triple)
+	     (undelete-triple triple :persistent? persistent?))
+	   triple))
+       (let ((id (uuid:make-v1-uuid)))  
+	 (let ((triple (make-triple :subject subject
+				    :predicate predicate
+				    :object object 
+				    :graph graph
+				    :cf (or cf +cf-true+)
+				    :persistent? persistent?
+				    :id id)))
+	   (push (list :add-triple subject predicate object graph id nil (cf triple))
+		 (tx-queue *current-transaction*))
+	   (add-to-index (main-idx *store*) triple :id-idx id)
+	   (if index-immediate?
+	       (index-triple triple *store*)
+	       (enqueue-triple-for-indexing triple))
+	   triple))))))
 
 (defun get-triple-by-id (id &optional (store *store*))
   (cursor-value (get-from-index (main-idx store) :id-idx id)))

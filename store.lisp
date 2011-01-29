@@ -118,7 +118,8 @@
     (sb-ext:with-locked-hash-table ((locks store))
       (setq lock 
 	    (or (gethash pattern (locks store))
-		(setf (gethash pattern store) (get-pool-lock (lock-pool store))))))
+		(setf (gethash pattern (locks store)) 
+		      (get-pool-lock (lock-pool store))))))
     (if (rw-lock? lock)
 	(if (eq kind :write)
 	    (acquire-write-lock lock)
