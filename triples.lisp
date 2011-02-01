@@ -97,7 +97,7 @@
     (let ((old-cf (triple-cf triple)))
       (when (persistent? triple)
 	(push (list :set-cf triple) (tx-queue *current-transaction*)))
-      (push (lambda () (setf (triple-cf triple) old-value))
+      (push (lambda () (setf (triple-cf triple) old-cf))
 	    (tx-rollback *current-transaction*))
       (cas (triple-cf triple) (triple-cf triple) new-value))))
 
