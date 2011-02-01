@@ -83,8 +83,7 @@
 (defun close-triple-store (&key (store *store*))
   (remhash (store-name store) *store-table*)
   (if (eql store *store*) (setq *store* nil))
-  (sb-concurrency:send-message (log-mailbox store) :shutdown)
-  (join-thread (logger-thread store))
+  (stop-logger store)
   nil)
 
 (defun open-triple-store (&key name location host port user password)

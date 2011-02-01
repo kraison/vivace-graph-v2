@@ -65,12 +65,13 @@
   (let ((*store* store))
     (with-locked-index ((main-idx store))
       (multiple-value-bind (snapshot-file timestamp) (find-newest-snapshot store)
-	(format t "Restoring from snapshot file ~A~%" snapshot-file)
-	(with-open-file (stream snapshot-file :element-type '(unsigned-byte 8))
-	  (do ((code (read-byte stream nil :eof) (read-byte stream nil :eof)))
-	      ((or (eql code :eof) (null code) (= code 0)))
-	    ;;(format t "GOT CODE 0x~X -> ~A~%" code (deserialize code stream))))
-	    (deserialize code stream)))
+	(when snapshot-file
+	  (format t "Restoring from snapshot file ~A~%" snapshot-file)
+	  (with-open-file (stream snapshot-file :element-type '(unsigned-byte 8))
+	    (do ((code (read-byte stream nil :eof) (read-byte stream nil :eof)))
+		((or (eql code :eof) (null code) (= code 0)))
+	      ;;(format t "GOT CODE 0x~X -> ~A~%" code (deserialize code stream))))
+	      (deserialize code stream))))
 	(dolist (file (find-transactions store timestamp))
 	  (format t "REPLAYING TX ~A~%" file)
 	  (replay-transactions file))
@@ -88,8 +89,10 @@
       (maphash #'(lambda (id triple)
 		   (declare (ignore id))
 		   (when (persistent? triple)
+		     (logger :info "serializing ~A" triple)
 		     (serialize triple stream)))
 	       (gethash :id-idx (index-table (main-idx store)))))
+    (logger :info "Recording null byte")
     (write-byte 0 stream)
     (force-output stream)))
 
@@ -108,7 +111,9 @@
     (format stream "~A" (gettimeofday))))
 
 (defun set-clean (store)
-  (delete-file (format nil "~A/.dirty" (location store))))
+  (let ((file (format nil "~A/.dirty" (location store))))  
+    (when (probe-file file)
+      (delete-file file))))
 
 (defun clear-tx-log (store)
   (dolist (file (directory 
@@ -130,7 +135,7 @@
 
 (defun record-tx (tx store)
   (when (and (transaction? tx) (tx-queue tx))
-    (logger :info "Recording tx ~A~%" tx)
+    (logger :info "Recording tx ~A~%" (reverse (tx-queue tx)))
     (handler-case
 	(with-open-file (stream (format nil "~A/tx-~A-~A" (location store) 
 					(get-universal-time) (incf *file-counter*))
@@ -141,14 +146,18 @@
       (error (c)
 	(logger :err "Unhandled error in record-tx: ~A" c)))))
 
+(defun stop-logger (store)
+  (sb-concurrency:send-message (log-mailbox store) :shutdown)
+  (join-thread (logger-thread store)))
+
 (defun start-logger (store)
   (make-thread 
    #'(lambda ()
-       (handler-case
-	   (let ((mailbox (sb-concurrency:make-mailbox)) (*file-counter* 0)
-		 (last-snapshot (gettimeofday)))
-	     (setf (log-mailbox store) mailbox)
-	     (loop
+       (let ((mailbox (sb-concurrency:make-mailbox)) (*file-counter* 0)
+	     (last-snapshot (gettimeofday)))
+	 (setf (log-mailbox store) mailbox)
+	 (loop
+	    (handler-case
 		(let ((msg (sb-concurrency:receive-message mailbox)))
 		  (logger :info "tx-log thread received message ~A" msg)
 		  (typecase msg
@@ -169,14 +178,19 @@
 			(snapshot store)
 			(set-clean store)
 			(quit))
-		       (:snapshot 
+		       (:snapshot
+			(logger :info "Snapshot commencing")
 			(snapshot store)
+			(logger :info "Snapshot complete.  Setting store CLEAN")
 			(set-clean store)
-			(setq last-snapshot (gettimeofday)))
+			(logger :info "Store set CLEAN")
+			(setq last-snapshot (gettimeofday))
+			(logger :info "Snapshot finished"))
 		       (otherwise 
-			(logger :info "Unknown msg to tx-log thread: ~A" msg))))))))
-	 (error (condition)
-	   (logger :err "Unhandled error in tx logger for ~A: ~A" store condition))))
+			(logger :info "Unknown msg to tx-log thread: ~A" msg))))))
+	      (error (condition)
+		(logger :err "Unhandled error in tx logger for ~A: ~A" 
+			store condition))))))
    :name (format nil "tx-log thread for ~A" store)))
 
 (defun release-all-locks (tx)
@@ -206,20 +220,23 @@
 	     :reason (format nil "Unable to execute transaction. Too may retries (~A)."
 			     retries))
       (let ((*current-transaction* (make-transaction :store store)))
+	(logger :info "execute-tx starting ~A" *current-transaction*)
 	(handler-case
 	    (sb-ext:with-timeout timeout
 	      (funcall fn))
 	  (sb-ext:timeout (condition)
-	    (declare (ignore condition))
+	    (logger :info "execute-tx timeout ~A" condition)
 	    (rollback-tx *current-transaction*)
 	    (release-all-locks *current-transaction*)
 	    (execute-tx store fn timeout max-tries (1+ retries)))
 	  (error (condition)
+	    (logger :info "execute-tx error ~A" condition)
 	    (rollback-tx *current-transaction*)
 	    (release-all-locks *current-transaction*)
 	    (error 'transaction-error 
 		   :reason (format nil "Unable to execute transaction: ~A" condition)))
 	  (:no-error (result)
+	    (logger :info "execute-tx success ~A" result)
 	    (sb-concurrency:send-message (log-mailbox store) *current-transaction*)
 	    (release-all-locks *current-transaction*)
 	    result)))))
