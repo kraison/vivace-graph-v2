@@ -170,12 +170,16 @@
 			(set-clean store)
 			(quit))
 		       (:shutdown 
+			(logger :info "Processing all pending messages.")
 			(dolist 
 			    (msg 
 			      (sb-concurrency:receive-pending-messages mailbox))
+			  (logger :info "Processing message ~A" msg)
 			  (when (transaction? msg)
 			    (record-tx msg store)))
+			(logger :info "Snapshotting the store.")
 			(snapshot store)
+			(logger :info "Marking the store clean.")
 			(set-clean store)
 			(quit))
 		       (:snapshot
