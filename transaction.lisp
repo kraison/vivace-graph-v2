@@ -241,7 +241,8 @@
 		   :reason (format nil "Unable to execute transaction: ~A" condition)))
 	  (:no-error (result)
 	    (logger :info "execute-tx success ~A" result)
-	    (sb-concurrency:send-message (log-mailbox store) *current-transaction*)
+	    (when (tx-queue *current-transaction*)
+	      (sb-concurrency:send-message (log-mailbox store) *current-transaction*))
 	    (release-all-locks *current-transaction*)
 	    result)))))
 
