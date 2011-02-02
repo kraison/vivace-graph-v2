@@ -181,7 +181,8 @@
 			(snapshot store)
 			(logger :info "Marking the store clean.")
 			(set-clean store)
-			(quit))
+			(logger :info "Logger thread quitting.")
+			(return t))
 		       (:snapshot
 			(logger :info "Snapshot commencing")
 			(snapshot store)
