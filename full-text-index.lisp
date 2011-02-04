@@ -3,6 +3,9 @@
 (defun add-to-text-index (idx key value)
   (skip-list-add idx key value))
 
+(defun remove-from-text-index (idx key)
+  (skip-list-delete idx key))
+
 (defun get-index-range (index start end)
   "This is wildly inefficient;  we need to eventually coalesce the two cursor types."
   (let ((result (make-array 0 :fill-pointer t :adjustable t)))

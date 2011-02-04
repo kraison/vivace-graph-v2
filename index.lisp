@@ -165,6 +165,7 @@
     (setf (gethash (car (last keys)) ht) value)))
 
 (defun delete-from-index (index value &rest keys)
+  ;; FIXME: implement
   (declare (ignore index value keys)))
 
 (defun get-table-to-lock (idx &rest keys)

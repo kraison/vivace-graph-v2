@@ -81,15 +81,31 @@
 (defmethod serialize ((vector vector) (stream stream))
   (serialize-sequence vector stream +vector+))
 
+(defun serialize-triple-help (triple stream)
+  (let ((graph-pkg (find-package 'graph-words)))
+    (if (and (symbolp (subject triple)) 
+	     (eq (symbol-package (subject triple)) graph-pkg))
+	(serialize (symbol-name (subject triple)) stream)
+	(serialize (subject triple) stream))
+    (if (and (symbolp (predicate triple)) 
+	     (eq (symbol-package (predicate triple)) graph-pkg))
+	(serialize (symbol-name (predicate triple)) stream)
+	(serialize (predicate triple) stream))
+    (if (and (symbolp (object triple)) 
+	     (eq (symbol-package (object triple)) graph-pkg))
+	(serialize (symbol-name (object triple)) stream)
+	(serialize (object triple) stream))
+    (if (and (symbolp (graph triple)) 
+	     (eq (symbol-package (graph triple)) graph-pkg))
+	(serialize (symbol-name (graph triple)) stream)
+	(serialize (graph triple) stream))
+    (serialize (id triple) stream)
+    (serialize (deleted? triple) stream)
+    (serialize (cf triple) stream)))
+
 (defmethod serialize ((triple triple) (stream stream))
   (write-byte +triple+ stream)
-  (serialize (subject triple) stream)
-  (serialize (predicate triple) stream)
-  (serialize (object triple) stream)
-  (serialize (graph triple) stream)
-  (serialize (id triple) stream)
-  (serialize (deleted? triple) stream)
-  (serialize (cf triple) stream))
+  (serialize-triple-help triple stream))
 
 (defmethod serialize-action ((action (eql :add-triple)) stream &rest args)
   (logger :debug "Serialize-action ~A: ~A~%" action args)
@@ -97,21 +113,23 @@
   (if (triple? (first args))  
       ;; We generally want to avoid this, as the triple could change between requested
       ;; serialization and actual serialization.
-      (let ((triple (first args)))
-	(serialize (subject triple) stream)
-	(serialize (predicate triple) stream)
-	(serialize (object triple) stream)
-	(serialize (graph triple) stream)
-	(serialize (id triple) stream)
-	(serialize (deleted? triple) stream)
-	(serialize (cf triple) stream))
-      (progn
-	(serialize (nth 0 args) stream)  ;; subject
-	(serialize (nth 1 args) stream)  ;; predicate
-	(serialize (nth 2 args) stream)  ;; object
-	(serialize (nth 3 args) stream)  ;; graph
-	(serialize (nth 4 args) stream)  ;; id
-	(serialize (nth 5 args) stream)  ;; deleted?
+      (serialize-triple-help (first args) stream)
+      (let ((subject (nth 0 args)) (predicate (nth 1 args)) (object (nth 2 args))
+	    (graph (nth 3 args)) (graph-pkg (find-package 'graph-words)))
+	(if (and (symbolp subject) (eq (symbol-package subject) graph-pkg))
+	    (serialize (symbol-name subject) stream)
+	    (serialize subject stream))
+	(if (and (symbolp predicate) (eq (symbol-package predicate) graph-pkg))
+	    (serialize (symbol-name predicate) stream)
+	    (serialize predicate stream))
+	(if (and (symbolp object) (eq (symbol-package object) graph-pkg))
+	    (serialize (symbol-name object) stream)
+	    (serialize object stream))
+	(if (and (symbolp graph) (eq (symbol-package graph) graph-pkg))
+	    (serialize (symbol-name graph) stream)
+	    (serialize graph stream))
+	(serialize (nth 4 args) stream)	    ;; id
+	(serialize (nth 5 args) stream)	    ;; deleted?
 	(serialize (nth 6 args) stream)))) ;; cf
 
 (defmethod serialize-action ((action (eql :delete-triple)) stream &rest args)
@@ -120,11 +138,11 @@
   (serialize (nth 1 args) stream)) ;; timestamp
 
 (defmethod serialize-action ((action (eql :undelete-triple)) stream &rest args)
-  (write-byte +delete-triple+ stream)
+  (write-byte +undelete-triple+ stream)
   (serialize (nth 0 args) stream)) ;; id
 
 (defmethod serialize-action ((action (eql :set-cf)) stream &rest args)
-  (write-byte +delete-triple+ stream)
+  (write-byte +set-cf+ stream)
   (serialize (nth 0 args) stream)  ;; id
   (serialize (nth 1 args) stream)) ;; cf
 

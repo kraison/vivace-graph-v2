@@ -4,9 +4,15 @@
 (defparameter *max-log-file-length* 10000000)
 (defparameter *file-counter* 0)
 
+(defun print-transaction (tx stream depth)
+  (declare (ignore depth))
+  (format stream "#<TX-~A>" (tx-id tx)))
+
 (defstruct (transaction
+	     (:print-function print-transaction)
 	     (:conc-name tx-)
 	     (:predicate transaction?))
+  (id (make-uuid))
   (queue nil)
   (rollback nil)
   (mailbox (sb-concurrency:make-mailbox))

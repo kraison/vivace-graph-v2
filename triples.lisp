@@ -82,6 +82,18 @@
 	(triple-persistent? triple))
       (triple-persistent? triple)))
 
+(defun make-anonymous-node ()
+  "Create a unique anonymous node."
+  (format nil "_anon:~A" (make-uuid)))
+
+(let ((regex 
+       "^_anon\:[0-9abcdefABCEDF]{8}\-[0-9abcdefABCEDF]{4}\-[0-9abcdefABCEDF]{4}\-[0-9abcdefABCEDF]{4}\-[0-9abcdefABCEDF]{12}$"))
+  (defun anonymous? (node)
+    (cl-ppcre:scan regex node)))
+
+(defun make-text-idx-key (g s p o)
+  (string-downcase (format nil "~A~A~A~A~A~A~A" g #\Nul s #\Nul p #\Nul o)))
+
 (defun index-predicate (name-string)
   (setf (gethash name-string (indexed-predicates *store*)) t))
 	
@@ -101,22 +113,58 @@
 	    (tx-rollback *current-transaction*))
       (cas (triple-cf triple) (triple-cf triple) new-value))))
 
-(defun make-anonymous-node ()
-  "Create a unique anonymous node."
-  (format nil "_anon:~A" (make-uuid)))
+(defun undelete-triple (triple &key (persistent? t))
+  (with-graph-transaction (*store*)
+    (enqueue-lock triple (lock-triple triple :kind :write) :write)
+    (when persistent?
+      (push (list :undelete-triple triple) (tx-queue *current-transaction*)))
+    (let ((old-value (triple-deleted? triple)))
+      (push (lambda () (setf (triple-deleted? triple) old-value))
+	    (tx-rollback *current-transaction*)))
+    (cas (triple-deleted? triple) (triple-deleted? triple) nil))
+  triple)
 
-(let ((regex 
-       "^_anon\:[0-9abcdefABCEDF]{8}\-[0-9abcdefABCEDF]{4}\-[0-9abcdefABCEDF]{4}\-[0-9abcdefABCEDF]{4}\-[0-9abcdefABCEDF]{12}$"))
-  (defun anonymous? (node)
-    (cl-ppcre:scan regex node)))
+(defun delete-triple (triple &key (persistent? t))
+  (with-graph-transaction (*store*)
+    (enqueue-lock triple (lock-triple triple :kind :write) :write)
+    (when persistent?
+      (push (list :delete-triple triple) (tx-queue *current-transaction*)))
+    (let ((old-value (triple-deleted? triple)))
+      (push (lambda () (setf (triple-deleted? triple) old-value))
+	    (tx-rollback *current-transaction*)))
+    (cas (triple-deleted? triple) nil (gettimeofday))))
 
-(defun make-text-idx-key (g s p o)
-  (string-downcase (format nil "~A~A~A~A~A~A~A" g #\Nul s #\Nul p #\Nul o)))
+(defun truly-delete-triple (triple &key (persistent? t))
+  ;; FIXME: create method for truly deleting triples, rather than marking them deleted.
+  (with-graph-transaction (*store*)
+    (enqueue-lock triple (lock-triple triple :kind :write) :write)
+    (when persistent?
+      (push (list :delete-triple triple) (tx-queue *current-transaction*)))
+    (cas (triple-deleted? triple) nil (gettimeofday))))
 
+(defun %deindex-triple (triple &optional (store *store*))
+  (delete-from-index (main-idx store) (id triple) :gspoi-idx (graph triple) 
+		     (subject triple) (predicate triple) (object triple))
+  (delete-from-index (main-idx store) (id triple) :spogi-idx (subject triple) 
+		     (predicate triple) (object triple) (graph triple))
+  (delete-from-index (main-idx store) (id triple) :posgi-idx (predicate triple) 
+		     (object triple) (subject triple) (graph triple))
+  (delete-from-index (main-idx store) (id triple) :ospgi-idx (object triple) 
+		     (subject triple) (predicate triple) (graph triple))
+  (delete-from-index (main-idx store) (id triple) :gposi-idx (graph triple) 
+		     (predicate triple) (object triple) (subject triple))
+  (delete-from-index (main-idx store) (id triple) :gospi-idx (graph triple) 
+		     (object triple) (subject triple) (predicate triple))
+  (when (index-predicate? (predicate triple))
+    (remove-from-text-index (text-idx *store*)
+			    (make-text-idx-key (graph triple) (subject triple) 
+					       (predicate triple) (object triple))))
+  t)
+  
 (defun index-triple (triple &optional (store *store*))
   (with-graph-transaction (store)
     (enqueue-lock triple (lock-triple triple :kind :write) :write)
-    (add-to-index (main-idx store) triple :id-idx (id triple))
+    (push (lambda () (%deindex-triple triple)) (tx-rollback *current-transaction*))
     (add-to-index (main-idx store) (id triple) :gspoi-idx
 		  (graph triple) (subject triple) (predicate triple) (object triple))
     (add-to-index (main-idx store) (id triple) :spogi-idx
@@ -147,21 +195,6 @@
 (defun enqueue-triple-for-indexing (triple)
   (add-to-index-queue triple))
 
-(defun undelete-triple (triple &key (persistent? t))
-  (with-graph-transaction (*store*)
-    (enqueue-lock triple (lock-triple triple :kind :write) :write)
-    (when persistent?
-      (push (list :undelete-triple triple) (tx-queue *current-transaction*)))
-    (cas (triple-deleted? triple) (triple-deleted? triple) nil))
-  triple)
-
-(defun delete-triple (triple &key (persistent? t))
-  (with-graph-transaction (*store*)
-    (enqueue-lock triple (lock-triple triple :kind :write) :write)
-    (when persistent?
-      (push (list :delete-triple triple) (tx-queue *current-transaction*)))
-    (cas (triple-deleted? triple) nil (gettimeofday))))
-
 (defun lookup-triple (subject predicate object graph &key retrieve-deleted? 
 		      already-locked?)
   (flet ((lookup (s p o g)
@@ -184,8 +217,6 @@
 			(lock-pattern subject predicate object graph :kind :read) 
 			:read)
 	  (lookup subject predicate object graph)))))
-
-(defpackage #:graph-words)
 
 (defun intern-spog (s p o g)
   (values 
@@ -219,8 +250,11 @@
 				    :cf (or cf +cf-true+)
 				    :persistent? persistent?
 				    :id id)))
-	   (push (list :add-triple subject predicate object graph id nil (cf triple))
-		 (tx-queue *current-transaction*))
+	   (when persistent?
+	     (push (list :add-triple subject predicate object graph id nil (cf triple))
+		   (tx-queue *current-transaction*)))
+	   (push (lambda () (delete-from-index (main-idx *store*) triple :id-idx id))
+		 (tx-rollback *current-transaction*))
 	   (add-to-index (main-idx *store*) triple :id-idx id)
 	   (if index-immediate?
 	       (index-triple triple *store*)
@@ -400,35 +434,3 @@
 	  (format t "Error loading triples: ~A / ~A~%" 
 		  (type-of condition) condition))))))
 
-#|
-(defmethod deserialize-help ((become (eql +triple+)) bytes)
-  "Decode a triple."
-  (declare (optimize (speed 3)))
-  (declare (type (simple-array (unsigned-byte 8)) bytes))
-  (declare (type integer become))
-  (destructuring-bind (subject predicate object belief id timestamp derived? deleted?)
-      (extract-all-subseqs bytes)
-    (declare (type (simple-array (unsigned-byte 8))
-                   subject predicate object belief id timestamp derived? deleted?))
-    (make-triple
-     :uuid (deserialize id)
-     :belief-factor (deserialize belief)
-     :derived? (deserialize derived?)
-     :subject (lookup-node subject *graph* t)
-     :predicate (lookup-predicate predicate *graph*)
-     :deleted? (deserialize deleted?)
-     :timestamp (deserialize timestamp)
-     :object (lookup-node object *graph* t))))
-
-(defmethod serialize ((triple triple))
-  "Encode a triple for storage."
-  (serialize-multiple +triple+
-                      (node-value (triple-subject triple))
-                      (make-serialized-key (triple-predicate triple))
-                      (node-value (triple-object triple))
-                      (triple-belief-factor triple)
-                      (triple-uuid triple)
-                      (triple-timestamp triple)
-                      (triple-derived? triple)
-                      (triple-deleted? triple)))
-|#
