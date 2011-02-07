@@ -1,6 +1,7 @@
 (in-package #:vivace-graph-v2)
 
 (defpackage #:graph-words)
+(defparameter *graph-words* (find-package :graph-words))
 
 (defparameter *store* nil)
 (defparameter *store-table* (make-hash-table :synchronized t :test 'eql))

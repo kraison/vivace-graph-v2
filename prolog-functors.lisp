@@ -254,12 +254,12 @@ comprehensive regex."
 			(let ((old-trail (fill-pointer *trail*)))
 			  (when (and (triple? triple) (not (deleted? triple)))
 			    (when (unify g (graph triple))
-			      (when (unify p (predicate triple))
-				(when (unify s (subject triple))
+			      (when (unify p (triple-predicate triple))
+				(when (unify s (triple-subject triple))
 				  (if (consp o)
-				      (when (unify (car o) (object triple))
+				      (when (unify (car o) (triple-object triple))
 					(funcall cont))
-				      (when (unify o (object triple))
+				      (when (unify o (triple-object triple))
 					(funcall cont))))))
 			    (undo-bindings old-trail)))))
 		  triples))))
@@ -405,10 +405,10 @@ comprehensive regex."
       (list node
 	    (mapcar #'(lambda (relation)
 			(if (anonymous? (second relation))
-			    (list relation 
-				  (reify-recursive (second relation)
-						   :max-levels max-levels
-						   :level (1+ level)))
+			    (nconc (list (first relation))
+				   (reify-recursive (second relation)
+						    :max-levels max-levels
+						    :level (1+ level)))
 			    relation))
 		    relations)))))
 
