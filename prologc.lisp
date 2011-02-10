@@ -561,36 +561,15 @@ for new types that will be stored in the db.")
   `(select () ,@goals))
 
 (defmacro map-query (fn query &key collect?)
-  "Maps fn over the results of query:
-collect? will return a list of the results of each application of fn.
-Warning:  you get the raw."
-  (let* ((top-level-query (gensym "PROVE"))
-	 (vars (cadr query))
-	 (goals (replace-?-vars (cddr query)))
-	 (*functor* (make-functor-symbol top-level-query 0)))
-    `(let* ((*trail* (make-array 200 :fill-pointer 0 :adjustable t))
-	    (*var-counter* 0)
-	    (*functor* ',*functor*)
-	    (*select-list* nil)
-	    (functor (make-functor :name *functor* :clauses nil)))
-       (unwind-protect
-	    (let ((func 
-		   #'(lambda (cont)
-		       (handler-case
-			   (block ,*functor*
-			     .,(maybe-add-undo-bindings
-				(mapcar 
-				 #'(lambda (clause)
-				     (compile-clause nil clause 'cont))
-				 `(((,top-level-query)
-				    ,@goals
-				    (map-query ,fn ,vars ,collect?))))))
-			 (undefined-function (condition)
-			   (error 'prolog-error :reason condition))))))
-	      (set-functor-fn *functor* func)
-	      (funcall func #'prolog-ignore))
-	 (delete-functor functor))
-       (nreverse *select-list*))))
+  "Maps fn over the results of query. collect? will return a list of the results of 
+each application of fn."
+  (with-gensyms (result)
+    (if collect?
+	`(mapcar #'(lambda (,result)
+		     (apply ,fn ,result))
+		 ,query)
+	`(dolist (,result ,query)
+	   (apply ,fn ,result)))))
 
 (defun valid-prolog-query? (form)
   (case (first form)
