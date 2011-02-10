@@ -389,11 +389,6 @@
       (cas (triple-deleted? triple) (triple-deleted? triple) timestamp))))
 
 (defun %index-triple (triple &optional (store *store*))
-  (format t "indexing triple: ~A / ~A / ~A / ~A / ~A~%" 
-	  (triple-id triple) (type-of (triple-subject triple))
-	  (type-of (triple-predicate triple))
-	  (type-of (triple-object triple))
-	  (type-of (triple-graph triple)))
   (add-to-index (main-idx store) triple :id-idx (id triple))
   (add-to-index (main-idx store) (id triple) :gspoi-idx
 		(triple-graph triple) (triple-subject triple) 

@@ -49,7 +49,6 @@
 	(push file transaction-logs)))
     (sort transaction-logs
 	  #'(lambda (x y)
-	      (format t "~A < ~A~%" x y)
 	      (when (and (stringp x) (stringp y))
 		(let ((pieces-x (cl-ppcre:split "\-" (pathname-name x)))
 		      (pieces-y (cl-ppcre:split "\-" (pathname-name y))))
