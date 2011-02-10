@@ -168,6 +168,12 @@
   ;; FIXME: implement
   (declare (ignore index value keys)))
 
+(defun check-index ()
+  (maphash #'(lambda (k v) (format t "~A: ~A~%" k (type-of k))) 
+	   (gethash :posgi-idx 
+		    (vivace-graph-v2::index-table 
+		     (main-idx go-phrase::*store*)))))
+
 (defun get-table-to-lock (idx &rest keys)
   (find-or-create-ht (index-table idx)
 		     keys 

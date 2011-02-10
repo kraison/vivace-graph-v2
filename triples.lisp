@@ -159,18 +159,24 @@
     (cas (triple-deleted? triple) nil (gettimeofday))))
 
 (defun %deindex-triple (triple &optional (store *store*))
-  (delete-from-index (main-idx store) (id triple) :gspoi-idx (graph triple) 
-		     (subject triple) (predicate triple) (object triple))
-  (delete-from-index (main-idx store) (id triple) :spogi-idx (subject triple) 
-		     (predicate triple) (object triple) (graph triple))
-  (delete-from-index (main-idx store) (id triple) :posgi-idx (predicate triple) 
-		     (object triple) (subject triple) (graph triple))
-  (delete-from-index (main-idx store) (id triple) :ospgi-idx (object triple) 
-		     (subject triple) (predicate triple) (graph triple))
-  (delete-from-index (main-idx store) (id triple) :gposi-idx (graph triple) 
-		     (predicate triple) (object triple) (subject triple))
-  (delete-from-index (main-idx store) (id triple) :gospi-idx (graph triple) 
-		     (object triple) (subject triple) (predicate triple))
+  (delete-from-index (main-idx store) (id triple) :gspoi-idx
+		     (triple-graph triple) (triple-subject triple) 
+		     (triple-predicate triple) (triple-object triple))
+  (delete-from-index (main-idx store) (id triple) :spogi-idx
+		     (triple-subject triple) (triple-predicate triple) 
+		     (triple-object triple) (triple-graph triple))
+  (delete-from-index (main-idx store) (id triple) :posgi-idx
+		     (triple-predicate triple) (triple-object triple) 
+		     (triple-subject triple) (triple-graph triple))
+  (delete-from-index (main-idx store) (id triple) :ospgi-idx
+		     (triple-object triple) (triple-subject triple) 
+		     (triple-predicate triple) (triple-graph triple))
+  (delete-from-index (main-idx store) (id triple) :gposi-idx
+		     (triple-graph triple) (triple-predicate triple) 
+		     (triple-object triple) (triple-subject triple))
+  (delete-from-index (main-idx store) (id triple) :gospi-idx
+		     (triple-graph triple) (triple-object triple) 
+		     (triple-subject triple) (triple-predicate triple))
   (when (index-predicate? (predicate triple))
     (remove-from-text-index (text-idx *store*)
 			    (make-text-idx-key (graph triple) (subject triple) 
@@ -182,17 +188,23 @@
     (enqueue-lock triple (lock-triple triple :kind :write) :write)
     (push (lambda () (%deindex-triple triple)) (tx-rollback *current-transaction*))
     (add-to-index (main-idx store) (id triple) :gspoi-idx
-		  (graph triple) (subject triple) (predicate triple) (object triple))
+		  (triple-graph triple) (triple-subject triple) 
+		  (triple-predicate triple) (triple-object triple))
     (add-to-index (main-idx store) (id triple) :spogi-idx
-		  (subject triple) (predicate triple) (object triple) (graph triple))
+		  (triple-subject triple) (triple-predicate triple) 
+		  (triple-object triple) (triple-graph triple))
     (add-to-index (main-idx store) (id triple) :posgi-idx
-		  (predicate triple) (object triple) (subject triple) (graph triple))
+		  (triple-predicate triple) (triple-object triple) 
+		  (triple-subject triple) (triple-graph triple))
     (add-to-index (main-idx store) (id triple) :ospgi-idx
-		  (object triple) (subject triple) (predicate triple) (graph triple))
+		  (triple-object triple) (triple-subject triple) 
+		  (triple-predicate triple) (triple-graph triple))
     (add-to-index (main-idx store) (id triple) :gposi-idx
-		  (graph triple) (predicate triple) (object triple) (subject triple))
+		  (triple-graph triple) (triple-predicate triple) 
+		  (triple-object triple) (triple-subject triple))
     (add-to-index (main-idx store) (id triple) :gospi-idx
-		  (graph triple) (object triple) (subject triple) (predicate triple))
+		  (triple-graph triple) (triple-object triple) 
+		  (triple-subject triple) (triple-predicate triple))
     (when (index-predicate? (predicate triple))
       (add-to-text-index (text-idx *store*)
 			 (make-text-idx-key (graph triple) (subject triple) 
@@ -377,19 +389,30 @@
       (cas (triple-deleted? triple) (triple-deleted? triple) timestamp))))
 
 (defun %index-triple (triple &optional (store *store*))
+  (format t "indexing triple: ~A / ~A / ~A / ~A / ~A~%" 
+	  (triple-id triple) (type-of (triple-subject triple))
+	  (type-of (triple-predicate triple))
+	  (type-of (triple-object triple))
+	  (type-of (triple-graph triple)))
   (add-to-index (main-idx store) triple :id-idx (id triple))
   (add-to-index (main-idx store) (id triple) :gspoi-idx
-		(graph triple) (subject triple) (predicate triple) (object triple))
+		(triple-graph triple) (triple-subject triple) 
+		(triple-predicate triple) (triple-object triple))
   (add-to-index (main-idx store) (id triple) :spogi-idx
-		(subject triple) (predicate triple) (object triple) (graph triple))
+		(triple-subject triple) (triple-predicate triple) 
+		(triple-object triple) (triple-graph triple))
   (add-to-index (main-idx store) (id triple) :posgi-idx
-		(predicate triple) (object triple) (subject triple) (graph triple))
+		(triple-predicate triple) (triple-object triple) 
+		(triple-subject triple) (triple-graph triple))
   (add-to-index (main-idx store) (id triple) :ospgi-idx
-		(object triple) (subject triple) (predicate triple) (graph triple))
+		(triple-object triple) (triple-subject triple) 
+		(triple-predicate triple) (triple-graph triple))
   (add-to-index (main-idx store) (id triple) :gposi-idx
-		(graph triple) (predicate triple) (object triple) (subject triple))
+		(triple-graph triple) (triple-predicate triple) 
+		(triple-object triple) (triple-subject triple))
   (add-to-index (main-idx store) (id triple) :gospi-idx
-		(graph triple) (object triple) (subject triple) (predicate triple))
+		(triple-graph triple) (triple-object triple) 
+		(triple-subject triple) (triple-predicate triple))
   (when (index-predicate? (predicate triple))
     (add-to-text-index (text-idx *store*)
 		       (make-text-idx-key (graph triple) (subject triple) 
