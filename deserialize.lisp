@@ -67,12 +67,12 @@
 
 (defmethod deserialize ((code (eql +symbol+)) stream)
   (let ((code (read-byte stream)))
-    (when (/= +string+ code)
+    (when (and (/= +string+ code) (/= +compressed-string+ code))
       (error 'deserialization-error :instance code :reason 
 	     "Symbol-name is not a string!"))
     (let ((symbol-name (deserialize code stream)))
       (setq code (read-byte stream))
-      (when (/= +string+ code)
+      (when (and (/= +string+ code) (/= +compressed-string+ code))
 	(error 'deserialization-error :instance code :reason 
 	       "Symbol-package is not a string!"))
       (let* ((pkg-name (deserialize code stream))
@@ -115,7 +115,7 @@
 (defun deserialize-triple-slot (stream)
   (let* ((type-byte (read-byte stream))
 	 (value (deserialize type-byte stream)))
-    (if (eq type-byte +string+)
+    (if (or (eq type-byte +string+) (eq type-byte +compressed-string+))
 	(intern value :graph-words)
 	value)))
 
