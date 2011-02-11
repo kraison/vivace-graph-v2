@@ -47,12 +47,20 @@
   (serialize-integer (char-code char) stream))
 
 (defmethod serialize ((string string) (stream stream))
-  (let* ((unicode (sb-ext:string-to-octets string))
-	 (length (length unicode)))
-    (write-byte +string+ stream)
-    (serialize length stream)
-    (dotimes (i length)
-      (write-byte (aref unicode i) stream))))
+  (if *compression-enabled?*
+      (let* ((comp (salza2:compress-data 
+		    (sb-ext:string-to-octets string) 'salza2:zlib-compressor))
+	     (length (length comp)))
+	(write-byte +compressed-string+ stream)
+	(serialize length stream)
+	(dotimes (i length)
+	  (write-byte (aref comp i) stream)))
+      (let* ((unicode (sb-ext:string-to-octets string))
+	     (length (length unicode)))
+	(write-byte +string+ stream)
+	(serialize length stream)
+	(dotimes (i length)
+	  (write-byte (aref unicode i) stream)))))
 
 (defmethod serialize ((symbol symbol) (stream stream))
   (cond ((null symbol)

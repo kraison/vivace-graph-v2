@@ -9,6 +9,8 @@
 
 (defparameter *read-uncommitted* t)
 
+(defparameter *compression-enabled?* t)
+
 ;; Graphs
 (defvar *graph* nil)
 (defvar *graph-table* nil)

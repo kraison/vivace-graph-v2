@@ -16,6 +16,8 @@
 	       :bordeaux-threads
 	       ;;:cl-btree-0.5
 	       :cl-skip-list
+	       :salza2
+	       :chipz
 	       :hunchentoot
 	       :uuid
 	       :ieee-floats

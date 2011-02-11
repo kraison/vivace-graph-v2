@@ -50,6 +50,7 @@
 (defconstant +null+ 12)
 (defconstant +blob+ 13) ;; Uninterpreted octets
 (defconstant +dotted-list+ 14)
+(defconstant +compressed-string+ 15)
 ;; User-defined type identifiers for serializing. Start at 100
 (defconstant +uuid+ 100)
 (defconstant +triple+ 101)
