@@ -47,7 +47,8 @@
   (serialize-integer (char-code char) stream))
 
 (defmethod serialize ((string string) (stream stream))
-  (if *compression-enabled?*
+  ;; FIXME: what is the right length to enable compression?
+  (if (and *compression-enabled?* (> (length string) 20))
       (let* ((comp (salza2:compress-data 
 		    (sb-ext:string-to-octets string) 'salza2:zlib-compressor))
 	     (length (length comp)))
