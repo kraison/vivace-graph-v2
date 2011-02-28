@@ -51,7 +51,8 @@
 	(dequeue (lock-writer-queue rw-lock))
 	(error "Cannot release lock I don't own!"))
     (if (next-in-queue? rw-lock sb-thread:*current-thread*)
-	(format t "Not releasing lock;  recursive ownership detected!~%")
+	;;(format t "Not releasing lock;  recursive ownership detected!~%")
+	nil
 	(progn
 	  (setf (lock-writer rw-lock) nil)
 	  (when reading-p

@@ -29,8 +29,8 @@
 	       :cl-js
 	       :cl-json)
   :components ((:file "uuid")
-	       (:file "sb-impl")
-	       (:file "sb-thread")
+	       #+sbcl (:file "sb-impl")
+	       #+sbcl (:file "sb-thread")
 	       (:file "vivace-graph-v2-package" :depends-on ("uuid"))
 	       (:file "hash-table" 
 		      :depends-on ("vivace-graph-v2-package" "sb-impl" "sb-thread"))
