@@ -49,7 +49,7 @@
 	   #:id
 	   #:cf
 	   #:triple-eql
-	   #:triple-equalp
+	   #:triple-equal
 	   #:make-anonymous-node
 	   #:add-triple
 	   #:get-triples

@@ -1,7 +1,11 @@
 (in-package #:vivace-graph-v2)
 
+(defun print-rw-lock (lock stream depth)
+  (format stream "#<RW-LOCK, W: ~A, R: ~A>" (lock-writer lock) (lock-readers lock)))
+
 (defstruct (rw-lock
 	     (:conc-name lock-)
+	     (:print-function print-rw-lock)
 	     (:predicate rw-lock?))
   (lock (sb-thread:make-mutex) :type sb-thread:mutex)
   (readers 0 :type integer)

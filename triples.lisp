@@ -225,69 +225,68 @@
 
 (defun lookup-triple (subject predicate object graph &key retrieve-deleted? 
 		      already-locked?)
-  (flet ((lookup (s p o g)
-	   (multiple-value-bind (subject predicate object graph) 
-	       (intern-spog subject predicate object graph)
-	     (let ((cursor (get-from-index (main-idx *store*) 
-					   :gspoi-idx graph subject predicate object)))
-	       (if (cursor-value cursor)
-		   (let ((triple (get-from-index (main-idx *store*) 
-						 :id-idx (cursor-value cursor))))
+  (multiple-value-bind (subject predicate object graph) 
+      (intern-spog subject predicate object graph)
+    (flet ((lookup (s p o g)
+	     (let ((cursor (get-from-index (main-idx *store*) :gspoi-idx g s p o)))
+	       (if (uuid:uuid? (cursor-value cursor))
+		   (let ((triple (cursor-value
+				  (get-from-index (main-idx *store*) 
+						  :id-idx 
+						  (cursor-value cursor)))))
 		     (when (triple? triple)
 		       (if (deleted? triple) 
 			   (when retrieve-deleted? 
 			     triple)
-			   triple))))))))
-    (if (or *read-uncommitted* already-locked?)
-	(lookup subject predicate object graph)
-	(with-graph-transaction (*store*)
-	  (enqueue-lock (list subject predicate object graph)
-			(lock-pattern subject predicate object graph :kind :read) 
-			:read)
-	  (lookup subject predicate object graph)))))
-
-(defun intern-spog (s p o g)
-  (values 
-   (if (stringp s) (intern s :graph-words) s)
-   (if (stringp p) (intern p :graph-words) p)
-   (if (stringp o) (intern o :graph-words) o)
-   (if (stringp g) (intern g :graph-words) g)))
+			   triple)))))))
+      (if (or *read-uncommitted* already-locked?)
+	  (lookup subject predicate object graph)
+	  (with-graph-transaction (*store*)
+	    (enqueue-lock (list subject predicate object graph)
+			  (lock-pattern subject predicate object graph :kind :read) 
+			  :read)
+	    (lookup subject predicate object graph))))))
 
 (defun add-triple (subject predicate object &key (graph *graph*) (index-immediate? t) 
 		   cf (persistent? t))
-  (with-graph-transaction (*store*)
-    (let ((lock (lock-pattern subject predicate object graph :kind :write)))
-      (enqueue-lock (list subject predicate object graph) lock :write))
-    (multiple-value-bind (subject predicate object graph) 
-	(intern-spog subject predicate object graph)
-      (or
-       (let ((triple (lookup-triple subject predicate object graph 
-				    :retrieve-deleted? t
-				    :already-locked? t)))
-	 (when (triple? triple)
-	   (when cf
-	     (set-triple-cf triple cf))
-	   (when (deleted? triple)
-	     (undelete-triple triple :persistent? persistent?))
-	   triple))
-       (let ((id (uuid:make-v1-uuid)))  
-	 (let ((triple (make-triple :subject subject
-				    :predicate predicate
-				    :object object 
-				    :graph graph
-				    :cf (or cf +cf-true+)
-				    :persistent? persistent?
-				    :id id)))
-	   (when persistent?
-	     (push (list :add-triple subject predicate object graph id nil (cf triple))
-		   (tx-queue *current-transaction*)))
-	   (push (lambda () (delete-from-index (main-idx *store*) triple :id-idx id))
-		 (tx-rollback *current-transaction*))
-	   (add-to-index (main-idx *store*) triple :id-idx id)
-	   (if index-immediate?
-	       (index-triple triple *store*)
-	       (enqueue-triple-for-indexing triple))
-	   triple))))))
+  (multiple-value-bind (subject predicate object graph) 
+      (intern-spog subject predicate object graph)
+    (with-graph-transaction (*store*)
+      (logger :info "~A enqueuing lock ~A/~A/~A/~A~%" *current-transaction* 
+	      subject predicate object graph)
+      (let ((lock (lock-pattern subject predicate object graph :kind :write)))
+	(enqueue-lock (list subject predicate object graph) lock :write)
+	(logger :info "~A enqueued lock ~A~%" *current-transaction* lock)
+	(or
+	 (let ((triple (lookup-triple subject predicate object graph 
+				      :retrieve-deleted? t
+				      :already-locked? t)))
+	   (logger :info "~A lookup-triple got ~A~%" *current-transaction* triple)
+	   (when (triple? triple)
+	     (when cf
+	       (set-triple-cf triple cf))
+	     (when (deleted? triple)
+	       (undelete-triple triple :persistent? persistent?))
+	     triple))
+	 (let ((id (uuid:make-v1-uuid)))  
+	   (let ((triple (make-triple :subject subject
+				      :predicate predicate
+				      :object object 
+				      :graph graph
+				      :cf (or cf +cf-true+)
+				      :persistent? persistent?
+				      :id id)))
+	     (when persistent?
+	       (push (list :add-triple subject predicate object graph id nil 
+			   (cf triple))
+		     (tx-queue *current-transaction*)))
+	     (push (lambda () (delete-from-index (main-idx *store*) triple :id-idx id))
+		   (tx-rollback *current-transaction*))
+	     (add-to-index (main-idx *store*) triple :id-idx id)
+	     (if index-immediate?
+		 (index-triple triple *store*)
+		 (enqueue-triple-for-indexing triple))
+	     triple)))))))
 
 (defun get-triple-by-id (id &optional (store *store*))
   (cursor-value (get-from-index (main-idx store) :id-idx id)))
