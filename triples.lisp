@@ -252,16 +252,12 @@
   (multiple-value-bind (subject predicate object graph) 
       (intern-spog subject predicate object graph)
     (with-graph-transaction (*store*)
-      (logger :info "~A enqueuing lock ~A/~A/~A/~A~%" *current-transaction* 
-	      subject predicate object graph)
       (let ((lock (lock-pattern subject predicate object graph :kind :write)))
 	(enqueue-lock (list subject predicate object graph) lock :write)
-	(logger :info "~A enqueued lock ~A~%" *current-transaction* lock)
 	(or
 	 (let ((triple (lookup-triple subject predicate object graph 
 				      :retrieve-deleted? t
 				      :already-locked? t)))
-	   (logger :info "~A lookup-triple got ~A~%" *current-transaction* triple)
 	   (when (triple? triple)
 	     (when cf
 	       (set-triple-cf triple cf))

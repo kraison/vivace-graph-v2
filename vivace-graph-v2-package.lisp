@@ -65,6 +65,8 @@
 	   #:unindex-predicate
 	   #:map-text-search
 	   #:delete-triple
+	   #:undelete-triple
+	   #:triple-deleted?
 	   #:erase-triple
 	   #:dump-triples
 	   #:load-triples

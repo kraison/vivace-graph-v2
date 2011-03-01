@@ -36,6 +36,8 @@
     (fiveam:is (test-select *store*))
     ;; Concurrency tests
     (fiveam:is (triple? (basic-concurrency-1 *store*)))
+    (fiveam:is (basic-concurrency-2 *store*))
+    (fiveam:is (delete-undelete-test))
     (fiveam:is-false (close-triple-store))
     (fiveam:is (null *store*))
     (fiveam:is-false (progn

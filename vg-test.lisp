@@ -6,3 +6,5 @@
 (asdf:oos 'asdf:load-op 'VIVACE-GRAPH-V2-TEST)
 (in-package #:VIVACE-GRAPH-V2-TEST)
 (run-all-tests)
+(when (and *test-db-dir* (probe-file *test-db-dir*))
+  (format t "WARNING: ~A was not deleted!~%" *test-db-dir*))
