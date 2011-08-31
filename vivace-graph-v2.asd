@@ -12,6 +12,7 @@
   :long-description "Vivace Graph Version 2."
   :depends-on (:sb-concurrency
 	       :sb-posix
+               :babel
 	       :cffi
 	       :bordeaux-threads
 	       ;;:cl-btree-0.5

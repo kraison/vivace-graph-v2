@@ -50,13 +50,13 @@
   ;; FIXME: what is the right length to enable compression?
   (if (and *compression-enabled?* (> (length string) 20))
       (let* ((comp (salza2:compress-data 
-		    (sb-ext:string-to-octets string) 'salza2:zlib-compressor))
+		    (babel:string-to-octets string) 'salza2:zlib-compressor))
 	     (length (length comp)))
 	(write-byte +compressed-string+ stream)
 	(serialize length stream)
 	(dotimes (i length)
 	  (write-byte (aref comp i) stream)))
-      (let* ((unicode (sb-ext:string-to-octets string))
+      (let* ((unicode (babel:string-to-octets string))
 	     (length (length unicode)))
 	(write-byte +string+ stream)
 	(serialize length stream)

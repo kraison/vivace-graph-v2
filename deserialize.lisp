@@ -50,14 +50,14 @@
 	 (array (make-array length :element-type '(unsigned-byte 8))))
     (dotimes (i length)
       (setf (aref array i) (read-byte stream)))
-    (sb-ext:octets-to-string array)))
+    (babel:octets-to-string array)))
 
 (defmethod deserialize ((code (eql +compressed-string+)) stream)
   (let* ((length (deserialize (read-byte stream) stream))
 	 (array (make-array length :element-type '(unsigned-byte 8))))
     (dotimes (i length)
       (setf (aref array i) (read-byte stream)))
-    (sb-ext:octets-to-string (chipz:decompress nil 'chipz:zlib array))))
+    (babel:octets-to-string (chipz:decompress nil 'chipz:zlib array))))
 
 (defmethod deserialize ((code (eql +t+)) stream)
   t)
