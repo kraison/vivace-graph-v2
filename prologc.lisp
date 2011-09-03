@@ -36,7 +36,7 @@ for new types that will be stored in the db.")
   (:method ((x timestamp) (y integer)) (= (timestamp-to-universal x) y))
   (:method ((x integer) (y timestamp)) (= (timestamp-to-universal y) x))
   (:method ((x triple) (y triple)) (triple-equal x y))
-  (:method ((x uuid:uuid) (y uuid:uuid)) (uuid:uuid-eql x y))
+  (:method ((x uuid:uuid) (y uuid:uuid)) (vg-uuid:uuid-eql x y))
   (:method (x y) (equal x y)))
 
 (defun unify (x y)

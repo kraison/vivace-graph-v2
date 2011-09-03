@@ -12,7 +12,7 @@
 	     (:print-function print-transaction)
 	     (:conc-name tx-)
 	     (:predicate transaction?))
-  (id (make-uuid))
+  (id (vg-uuid:make-v1-uuid))
   (queue nil)
   (rollback nil)
   (mailbox (sb-concurrency:make-mailbox))
