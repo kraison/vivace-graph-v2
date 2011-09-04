@@ -15,23 +15,18 @@ vivace-graph-devel mailing list:
  Sat Jul 2 17:00:43 PDT 2011
  (URL `http://lists.common-lisp.net/pipermail/vivace-graph-devel/2011-July/000002.html')
 
+I (mon-key) have replaced the original per item numeric annotations with
+asterisks and changed the read order to accomodate re-grouping of related
+tasks. This re-grouping occured under the assumption that the original numeric
+ordering of KR's requirements did necessarily imply that some requierment-A was
+implicitly more important / required than some other requirement-Z.
+
+;;; ==============================
 The major things that need to be done to satisfy my personal requirements:
 
-1.  Stabilize transaction logging.
-    I am actively working on this; it should be stable within the next week or
-    two.
+*  Stabilize transaction logging.
 
 *   Remove the SBCL-specific code that litters the project.
-
-*   Add reciprocal reasoning. (eg. has-child implies has-parent)
-
-*   Fix lexical env issues between Prolog and Lisp.
-    Currently, to import a Lisp variable into Prolog, it must be declared
-    SPECIAL.  This is because the Prolog implementation is based on Norvig's
-    PAIP, which uses CL:EVAL.  A better solution should be found.
-
-*   While triples are thread safe, Prolog may or may not be.
-    This should be investigated and fixed where necessary.
 
 *   Make a choice on what sort of on-disk storage mechanism to use.  
     Currently, all data must fit in RAM and is persisted via snapshotting and
@@ -46,28 +41,41 @@ The major things that need to be done to satisfy my personal requirements:
        (http://reports-archive.adm.cs.cmu.edu/anon/2002/CMU-CS-02-115.pdf)?
 
      - B-Tries
-       I expressed concern to Red and Ilya about using btrees, given the
+       I expressed concern to Red and Ilya about using B-trees, given the
        extremely high fanout of the indices.
 
        I was considering something like B-tries, as described in this paper:
         (URL `http://www.naskitis.com/naskitis-vldbj09.pdf').
 
-*   Implement a protocol for submitting queries over the network.
+*   Spend some time on the text indexing piece.
+    It currently uses my cl-skip-list, but should be moved into a B-tree.
+
+*   While triples are thread safe, Prolog may or may not be.
+    This should be investigated and fixed where necessary.
+
+*   Fix lexical env issues between Prolog and Lisp.
+    Currently, importing a Lisp variable into Prolog requires that it be
+    declared SPECIAL.  This is because the Prolog implementation is based on
+    Norvig's PAIP, which uses CL:EVAL.  A better solution should be found.
+
+*   Add reciprocal reasoning. 
+     (has-child implies has-parent)
 
 *   Factor out the certainty factors code.
-    Make CFs triples in their own right rather than a mutable field in the
-    triple structure.
-
-*   Spend some time on the text indexing piece.
-    It currently uses my cl-skip-list, but should be moved into a btree.
-
-*   Incoporate more RDF-related stuff. 
-    (Sparql, N-Triples parser / loader, etc.)
+     - Make CFs first class triples
+       Currently these are a mutable fields of the structure TRIPLE. 
 
 *   Incorporate Geospatial / Temporal reasoning
 
-*   forward chaining rules engine.
-    (Rete or LEAPS-derived)
+*   Incorporate forward chaining rules engine.
+     (Rete or LEAPS-derived)
+
+*   Incorporate more RDF-related stuff. 
+    (Sparql, N-Triples parser / loader, etc.)
+
+*   Implement a protocol for submitting queries over the network.
+
+
 
 ;;; ==============================
 ;;; EOF
