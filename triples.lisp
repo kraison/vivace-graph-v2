@@ -1,7 +1,21 @@
 (in-package #:vivace-graph-v2)
 
-(defgeneric triple-equal (t1 t2)
+(defgeneric triple-eql (t1 t2)
   (:method ((t1 triple) (t2 triple)) (uuid:uuid-eql (id t1) (id t2)))
+  (:method (t1 t2) nil))
+
+(defgeneric triple-equal (t1 t2)
+  (:method ((t1 triple) (t2 triple)) 
+    (and (uuid:uuid-eql (id t1) (id t2))
+	 (equal (triple-subject t1) (triple-subject t2))
+	 (equal (triple-predicate t1) (triple-predicate t2))
+	 (equal (triple-object t1) (triple-object t2))))
+  (:method (t1 t2) nil))
+
+(defgeneric triple-equalp (t1 t2)
+  (:method ((t1 triple) (t2 triple)) 
+    (and (triple-equal t1 t2)
+	 (equal (triple-graph t1) (triple-graph t2))))
   (:method (t1 t2) nil))
 
 (defmethod deleted? ((triple triple))
@@ -29,7 +43,8 @@
 (defmethod predicate ((triple triple))
   (flet ((get-value ()
 	   (if (and (symbolp (triple-predicate triple)) 
-		    (eq *graph-words* (symbol-package (triple-predicate triple))))
+		    (eq *graph-words* 
+			(symbol-package (triple-predicate triple))))
 	       (symbol-name (triple-predicate triple))
 	       (triple-predicate triple))))
     (if (not *read-uncommitted*)
@@ -102,10 +117,10 @@
   (format nil "_anon:~A" (make-uuid)))
 
 (let ((regex 
-       "^_anon\:[0-9abcdefABCEDF]{8}\-[0-9abcdefABCEDF]{4}\-[0-9abcdefABCEDF]{4}\-[0-9abcdefABCEDF]{4}\-[0-9abcdefABCEDF]{12}$"))
+       "^_anon\:[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$"))
   (defun anonymous? (node)
-    (when (stringp node)
-      (cl-ppcre:scan regex node))))
+    (and (stringp node)
+	 (cl-ppcre:scan regex node))))
 
 (defun make-text-idx-key (g s p o)
   (string-downcase (format nil "~A~A~A~A~A~A~A" g #\Nul s #\Nul p #\Nul o)))
