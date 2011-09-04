@@ -578,7 +578,8 @@ each application of fn."
     (select-flat t)
     (select-first t)
     (<- t)
-    (insertt)
+    ;; (insertt)
+    (insert t)
     (otherwise nil)))
 
 
