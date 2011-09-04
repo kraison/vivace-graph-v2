@@ -97,6 +97,8 @@
 	(triple-persistent? triple))
       (triple-persistent? triple)))
 
+;;; :NOTE Our initial naive assumption is that it may be faster to use make-v4-uuid 
+;;; doing so we could then check `anonymous?' by examining if the version bit is set.
 (defun make-anonymous-node ()
   "Create a unique anonymous node."
   (format nil "_anon:~A" (vg-uuid:make-v1-uuid)))
@@ -106,6 +108,7 @@
   (defun anonymous? (node)
     (when (stringp node)
       (cl-ppcre:scan regex node))))
+
 
 (defun make-text-idx-key (g s p o)
   (string-downcase (format nil "~A~A~A~A~A~A~A" g #\Nul s #\Nul p #\Nul o)))
