@@ -31,7 +31,9 @@
 
 (defun list-indexed-predicates (&optional (store *store*))
   (let ((result nil))
-    (maphash #'(lambda (k v) (when v (push k result))) (indexed-predicates store))
+    (maphash #'(lambda (k v) 
+		 (when v (push k result))) 
+	     (indexed-predicates store))
     (sort result #'string>)))
 
 (defun make-fresh-store (name location &key (num-locks 10000))
@@ -58,7 +60,8 @@
 (defun make-local-triple-store (name location)
   (make-fresh-store name location))
 
-(defun create-triple-store (&key name if-exists? location host port user password)
+(defun create-triple-store (&key name if-exists? location host port 
+			    user password)
   (declare (ignore if-exists?))
   (setq *graph* (or name location (format nil "~A:~A" host port)))
   (if location
@@ -119,7 +122,8 @@
    (if (stringp o) (intern o :graph-words) o)
    (if (stringp g) (intern g :graph-words) g)))
 
-(defun lock-pattern (subject predicate object graph &key (kind :write) (store *store*))
+(defun lock-pattern (subject predicate object graph &key (kind :write) 
+		     (store *store*))
   (multiple-value-bind (subject predicate object graph) 
       (intern-spog subject predicate object graph)
     (let ((lock nil) (pattern (list subject predicate object graph)))

@@ -10,12 +10,11 @@
   :version "0.2"
   :description "Vivace Graph Version 2"
   :long-description "Vivace Graph Version 2."
-  :depends-on (:sb-concurrency
-	       :sb-posix
-               :babel
+  :depends-on (:babel
+	       #+sbcl :sb-concurrency
+	       #+sbcl :sb-posix
 	       :cffi
 	       :bordeaux-threads
-	       ;;:cl-btree-0.5
 	       :cl-skip-list
 	       :salza2
 	       :chipz
@@ -34,7 +33,9 @@
 	       #+sbcl (:file "sb-thread")
 	       (:file "vivace-graph-v2-package" :depends-on ("uuid"))
 	       (:file "hash-table" 
-		      :depends-on ("vivace-graph-v2-package" "sb-impl" "sb-thread"))
+		      :depends-on ("vivace-graph-v2-package" 
+				   "sb-impl" 
+				   "sb-thread"))
 	       (:file "gettimeofday" :depends-on ("vivace-graph-v2-package"))
 	       (:file "conditions" :depends-on ("vivace-graph-v2-package"))
 	       (:file "constants" :depends-on ("conditions"))
