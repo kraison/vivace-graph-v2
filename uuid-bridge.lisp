@@ -18,6 +18,7 @@
 ;;; ==============================
 
 
+
 (defpackage #:vg-uuid
   (:use :common-lisp)
   (:export #:uuid?
