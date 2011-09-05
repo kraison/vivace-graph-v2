@@ -1,7 +1,8 @@
 (in-package #:vivace-graph-v2)
 
 (defgeneric triple-eql (t1 t2)
-  (:method ((t1 triple) (t2 triple)) (vg-uuid:uuid-eql (id t1) (id t2)))
+  (:method ((t1 triple) (t2 triple)) 
+    (vg-uuid:uuid-eql (id t1) (id t2)))
   (:method (t1 t2) nil))
 
 (defgeneric triple-equal (t1 t2)
@@ -112,10 +113,15 @@
 	(triple-persistent? triple))
       (triple-persistent? triple)))
 
-;;; :NOTE Our initial naive assumption is that it may be faster to use make-v4-uuid 
-;;; doing so we could then check `anonymous?' by examining if the version bit is set.
+;; :NOTE Our initial naive assumption is that it may be faster to use
+;; `make-v4-uuid' esp. as long as the rest of the system continues using
+;; `vg-uuid:make-v1-uuid', using a v4-uuid we could then check `anonymous?' by
+;; examining if the version 4 bit is set. This said, it would be _much_ cleaner
+;; to eschew v1 uuids completely int the the UUID reliant portions of the
+;; system by using v3 or v5 UUIDs instead.
 (defun make-anonymous-node ()
-  "Create a unique anonymous node."
+  "Create a unique anonymous node.
+:SEE-ALSO `deftemplate'"
   (format nil "_anon:~A" (vg-uuid:make-v1-uuid)))
 
 ;; If the uuid library were more like Unicly it would do "the right thing" per
@@ -146,6 +152,7 @@
 (defun unindex-predicate (name-string)
   (setf (gethash name-string (indexed-predicates *store*)) nil))
 
+;; This method appears to be unused.
 (defmethod make-anonymous-node-name ((uuid uuid:uuid))
   (format nil "_anon:~A" uuid))
 

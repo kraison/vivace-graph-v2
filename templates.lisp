@@ -1,61 +1,102 @@
+;;; :FILE vivace-graph-v2/templates.lisp
+;;; ==============================
+
+#||
+ 
+:NOTE Instead of using a v1 or v4 UUID, why not instead create the node as a v3
+or v5 UUID using a namespace *anonymous-node-namespace* as created with
+make-v4-uuid?
+
+;; (string-downcase (princ-to-string (uuid:make-v4-uuid)))
+;;=> "a8c5c06f-fbf7-4275-b2be-55907fbeb18e"
+;; 
+
+ (defconstant +mostly-immutable-anonymous-node-namespace+ "a8c5c06f-fbf7-4275-b2be-55907fbeb18e"
+   "A string of hexadecimal characters delimited by #\\- with the form: 8-4-4-12.
+Its value is the string representation of the UUID used as the value of the
+variable `*anonymous-node-namespace*'.
+:NOTE The intention is that this variable is constant should remain constant for
+across multiple vivace-graph-v2 sessions. Its value should not be mutated! 
+Doing so may invalidate the identity of pre-existing persistent UUIDs instiated
+as if by the macro `deftemplate'.")
+
+ (defvar *anonymous-node-namespace* 
+   (make-uuid-from-string +mostly-immutable-anonymous-node-namespace+)
+   "Namespace used for creation of anonymous nodes with the macro `deftemplate'.
+:SEE-ALSO `make-template-node-in-anonymouse-namespace'.")
+
+ (defun make-template-node-in-anonymouse-namespace (stringed-node-name)
+   "Helper function for the macro `deftemplate'
+STRINGED-NODE-NAME is a string to as the NAME argument to `make-v5-uuid'.
+It is assumed that STRINGED-NODE-NAME has already have been processed with `string-downcase'."
+   (declare (special *anonymous-node-namespace*))
+   (uuid:make-v5-uuid *anonymous-node-namespace* stringed-node-name))
+
+ (defmacro tt--deftemplate (name &rest slots)
+   (unless (triple-store? *store*)
+     (error "deftemplate ~A: *store* is not bound to a triple store!" name))
+   (let ((node            (gensym))
+         (node-namestring (gensym)))
+     (setf (gethash name (templates *store*))
+           (eval
+            `#'(lambda (&key ,@(mapcar #'second slots))
+                 (with-graph-transaction (*store*)
+                   (let* ( ;; it is acceptable to pass string-downcase a symbol
+                          (,node-namestring (string-downcase name)) ;; (symbol-name name) ;
+                          (,node (make-template-node-in-anonymouse-namespace ,node-namestring)))
+                     (add-triple ,node "is-a" ,node-namestring)
+                     ,@(mapcar 
+                        #'(lambda (slot)
+                            `(add-triple ,node 
+                                         ,(string-downcase (symbol-name (second slot)))
+                                         ,(second slot)))
+                        slots)
+                     ,node)))))))
+
+||#
+
+
+
 (in-package #:vivace-graph-v2)
 
 (defmacro deftemplate (name &rest slots)
-  "Define a template:
- (deftemplate person
-   (slot has-name)
-   (slot has-age)
-   (slot has-eye-color)
-   (slot has-hair-color)) 
-A function is added to the template table of *store* with name NAME.  This function 
-will be used to create groups of triples conforming to this template. See FACT and 
-DEFFACTS."
   (unless (triple-store? *store*)
     (error "deftemplate ~A: *store* is not bound to a triple store!" name))
   (let ((node (gensym)))
     (setf (gethash name (templates *store*))
-	  (eval
-	   `#'(lambda (&key ,@(mapcar #'second slots))
-		(with-graph-transaction (*store*)
-		  (let ((,node (make-anonymous-node)))
-		    (add-triple ,node "is-a" ,(string-downcase (symbol-name name)))
-		    ,@(mapcar 
-		       #'(lambda (slot)
-			   `(add-triple ,node 
-					,(string-downcase (symbol-name (second slot)))
-					,(second slot)))
-		       slots)
-		    ,node)))))))
+          (eval
+           `#'(lambda (&key ,@(mapcar #'second slots))
+                (with-graph-transaction (*store*)
+                  (let ((,node (make-anonymous-node)))
+                    (add-triple ,node "is-a" ,(string-downcase (symbol-name name)))
+                    ,@(mapcar 
+                       #'(lambda (slot)
+                           `(add-triple ,node 
+                                        ,(string-downcase (symbol-name (second slot)))
+                                        ,(second slot)))
+                       slots)
+                    ,node)))))))
 
 (defmacro fact (template)
-  "Create a group of triples using the named template as defined in DEFTEMPLATE:
- (fact (person (has-name \"John Q. Public\")
-  	       (has-age 23)
-  	       (has-eye-color blue)
- 	       (has-hair-color black)))" 
   (let ((tmpl-name (first template)))
     `(funcall (gethash ',tmpl-name (templates *store*))
-	      ,@(flatten (mapcar #'(lambda (slot)
-				     `(,(intern (symbol-name (first slot)) 'keyword)
-					,(second slot)))
-				 (rest template))))))
+              ,@(flatten (mapcar #'(lambda (slot)
+                                     `(,(intern (symbol-name (first slot)) 'keyword)
+                                        ,(second slot)))
+                                 (rest template))))))
 
 (defmacro deffacts (&rest templates)
-  "Create a set of triple groups conforming to the named template as defined by
-DEFTEMPLATE:
- (deffacts
-     (person (has-name \"John Q. Public\") (has-age 23) 
- 	    (has-eye-color blue) (has-hair-color black))
-     (person (has-name \"Jane S. Public\") (has-age 24)
-  	    (has-eye-color blue) (has-hair-color blond)))"
   (let ((template (gensym)))
     `(mapcar #'(lambda (,template)
-		 (let ((tmpl-name (first ,template)))
-		   (format t "tmpl-name is ~A~%" tmpl-name)
-		   (apply (gethash tmpl-name (templates *store*))
-			  (flatten
-			   (mapcar #'(lambda (slot)
-				       (list (intern (symbol-name (first slot)) 'keyword)
-					     (second slot)))
-				   (rest ,template))))))
-	     ',templates)))
+                 (let ((tmpl-name (first ,template)))
+                   (format t "tmpl-name is ~A~%" tmpl-name)
+                   (apply (gethash tmpl-name (templates *store*))
+                          (flatten
+                           (mapcar #'(lambda (slot)
+                                       (list (intern (symbol-name (first slot)) 'keyword)
+                                             (second slot)))
+                                   (rest ,template))))))
+             ',templates)))
+
+;;; ==============================
+;;; EOF
