@@ -2,6 +2,7 @@
 
 (defstruct index-cursor index vector pointer)
 
+;; :NOTE It doesn't appear that `idx-equal' has callers.
 (defgeneric idx-equal (a b)
   (:method ((a string) (b string)) (string= a b))
   (:method ((a number) (b number)) (= a b))
@@ -168,6 +169,10 @@
 						    :test (index-test index))))))
     (setf (gethash (car (last keys)) ht) value)))
 
+;; :NOTE what happens if some indexes are allowed to have weak references?
+;; Wouldn't this allow non-referenced key/values to delete silently?
+;; And if so, would weak hashes provide some of the (as yet unimplemented)
+;; features of `delete-from-index'?
 (defun delete-from-index (index value &rest keys)
   ;; FIXME: implement
   (declare (ignore index value keys)))
@@ -196,7 +201,7 @@
       `(sb-ext:with-locked-hash-table ((index-table ,idx))
 	 ,@body)))
 
-
+;; (test-index)
 (defun test-index ()
   (let ((index (make-hierarchical-index :test 'equal)))
     (add-to-index index "abc" "a" "b" "c")
@@ -207,4 +212,6 @@
     (add-to-index index "aby" "a" "b" "y")
     (add-to-index index "acy" "a" "c" "y")
     (add-to-index index "bcy" "b" "c" "y")
+    ;; (get-from-index index "b" "c")
     (get-from-index index "a" "b")))
+    

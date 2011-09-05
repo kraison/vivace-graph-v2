@@ -28,10 +28,10 @@
 	       :py-configparser
 	       :cl-js
 	       :cl-json)
-  :components ((:file "uuid")
+  :components ((:file "uuid-bridge")
 	       #+sbcl (:file "sb-impl")
 	       #+sbcl (:file "sb-thread")
-	       (:file "vivace-graph-v2-package" :depends-on ("uuid"))
+	       (:file "vivace-graph-v2-package" :depends-on ("uuid-bridge"))
 	       (:file "hash-table" 
 		      :depends-on ("vivace-graph-v2-package" 
 				   "sb-impl" 

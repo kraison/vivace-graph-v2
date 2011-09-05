@@ -75,7 +75,7 @@
 
 (defmethod serialize ((uuid uuid:uuid) (stream stream))
   (write-byte +uuid+ stream)
-  (uuid:serialize-uuid uuid stream))
+  (vg-uuid:serialize-uuid uuid stream))
 
 (defun serialize-sequence (seq stream code)
   (let ((length (length seq)))
@@ -170,7 +170,7 @@
 			  :element-type '(unsigned-byte 8)
 			  :if-exists :overwrite
 			  :if-does-not-exist :create)
-    (let ((uuid (make-uuid))
+    (let ((uuid (vg-uuid:make-v1-uuid))
 	  (vec (make-array 5)))
       (setf (aref vec 0) 1)
       (setf (aref vec 1) #\a)

@@ -45,7 +45,7 @@
 			:lock-pool (make-lock-pool num-locks)
 			:locks (make-hash-table :synchronized t :test 'equal)
 			:text-idx (make-skip-list :key-equal 'equalp
-						  :value-equal 'uuid:uuid-eql
+						  :value-equal 'vg-uuid:uuid-eql
 						  :duplicates-allowed? t)
 			:log-mailbox (sb-concurrency:make-mailbox)
 			:index-queue (sb-concurrency:make-queue)
@@ -53,7 +53,7 @@
 			:templates (make-hash-table :synchronized t :test 'eql)
 			:indexed-predicates (make-hash-table :synchronized t 
 							     :test 'eql))))
-    (add-to-index (main-idx store) (make-uuid-table :synchronized t) :id-idx)
+    (add-to-index (main-idx store) (vg-uuid::make-uuid-table :synchronized t) :id-idx)
     (setf (logger-thread store) (start-logger store))
     store))
 

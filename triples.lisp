@@ -2,7 +2,6 @@
 
 (defgeneric triple-eql (t1 t2)
   (:method ((t1 triple) (t2 triple)) (uuid:uuid-eql (id t1) (id t2)))
-  (:method (t1 t2) nil))
 
 (defgeneric triple-equal (t1 t2)
   (:method ((t1 triple) (t2 triple)) 
@@ -112,9 +111,11 @@
 	(triple-persistent? triple))
       (triple-persistent? triple)))
 
+;;; :NOTE Our initial naive assumption is that it may be faster to use make-v4-uuid 
+;;; doing so we could then check `anonymous?' by examining if the version bit is set.
 (defun make-anonymous-node ()
   "Create a unique anonymous node."
-  (format nil "_anon:~A" (make-uuid)))
+  (format nil "_anon:~A" (vg-uuid:make-v1-uuid)))
 
 (let ((regex 
        "^_anon\:[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$"))
@@ -244,7 +245,7 @@
       (intern-spog subject predicate object graph)
     (flet ((lookup (s p o g)
 	     (let ((cursor (get-from-index (main-idx *store*) :gspoi-idx g s p o)))
-	       (if (uuid:uuid? (cursor-value cursor))
+	       (if (vg-uuid:uuid? (cursor-value cursor))
 		   (let ((triple (cursor-value
 				  (get-from-index (main-idx *store*) 
 						  :id-idx 
@@ -279,7 +280,7 @@
 	     (when (deleted? triple)
 	       (undelete-triple triple :persistent? persistent?))
 	     triple))
-	 (let ((id (uuid:make-v1-uuid)))  
+	 (let ((id (vg-uuid:make-v1-uuid)))  
 	   (let ((triple (make-triple :subject subject
 				      :predicate predicate
 				      :object object 
@@ -378,21 +379,21 @@
 		(get-from-index (main-idx *store*) :gspoi-idx name))))
 
 (defun %set-triple-cf (id cf)
-  (let ((triple (get-triple-by-id (if (uuid:uuid? id) 
+  (let ((triple (get-triple-by-id (if (vg-uuid:uuid? id) 
 				      id 
 				      (uuid:make-uuid-from-string id)))))
     (when (triple? triple)
       (cas (triple-cf triple) (triple-cf triple) cf))))
 
 (defun %undelete-triple (id)
-  (let ((triple (get-triple-by-id (if (uuid:uuid? id) 
+  (let ((triple (get-triple-by-id (if (vg-uuid:uuid? id) 
 				      id 
 				      (uuid:make-uuid-from-string id)))))
     (when (triple? triple)
       (cas (triple-deleted? triple) (triple-deleted? triple) nil))))
 
 (defun %delete-triple (id timestamp)
-  (let ((triple (get-triple-by-id (if (uuid:uuid? id) 
+  (let ((triple (get-triple-by-id (if (vg-uuid:uuid? id) 
 				      id 
 				      (uuid:make-uuid-from-string id)))))
     (when (triple? triple)

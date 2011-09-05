@@ -30,9 +30,9 @@ py-configparser: http://common-lisp.net/project/py-configparser/
 js: http://github.com/akapav/js
 split-sequence: http://www.cliki.net/SPLIT-SEQUENCE
 
-
 To get you started:
-(asdf:oos 'asdf:load-op 'vivace-graph-v2)
+(push #P"/path/to/vivace-graph-v2/" asdf:*central-registry*)
+(quicklisp:quickload 'vivace-graph-v2)
 (in-package #:vivace-graph-v2)
 
 (create-triple-store :name "test store" :location "/var/tmp/db")
