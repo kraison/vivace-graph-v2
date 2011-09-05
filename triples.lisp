@@ -1,11 +1,12 @@
 (in-package #:vivace-graph-v2)
 
 (defgeneric triple-eql (t1 t2)
-  (:method ((t1 triple) (t2 triple)) (uuid:uuid-eql (id t1) (id t2)))
+  (:method ((t1 triple) (t2 triple)) (vg-uuid:uuid-eql (id t1) (id t2)))
+  (:method (t1 t2) nil))
 
 (defgeneric triple-equal (t1 t2)
   (:method ((t1 triple) (t2 triple)) 
-    (and (uuid:uuid-eql (id t1) (id t2))
+    (and (vg-uuid:uuid-eql (id t1) (id t2))
 	 (equal (triple-subject t1) (triple-subject t2))
 	 (equal (triple-predicate t1) (triple-predicate t2))
 	 (equal (triple-object t1) (triple-object t2))))
@@ -33,7 +34,7 @@
   (if (not *read-uncommitted*)
       (with-graph-transaction (*store*)
 	(enqueue-lock triple (lock-triple triple :kind :read) :read)
-	(get-value))
+ 	(get-value))
       (get-value))))
 
 (defmethod subject ((list list))
@@ -135,8 +136,6 @@
   (defun anonymous? (node)
     (and (stringp node)
 	 (cl-ppcre:scan regex node))))
-
-
 
 (defun make-text-idx-key (g s p o)
   (string-downcase (format nil "~A~A~A~A~A~A~A" g #\Nul s #\Nul p #\Nul o)))
