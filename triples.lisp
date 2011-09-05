@@ -117,11 +117,26 @@
   "Create a unique anonymous node."
   (format nil "_anon:~A" (vg-uuid:make-v1-uuid)))
 
+;; If the uuid library were more like Unicly it would do "the right thing" per
+;; the RFC by case-sensitively printing hex chars of UUID objects in lower
+;; case...  There is a minor performance optimization to be had by avoiding
+;; having to match [a-fA-F] and instead matching only [a-f]{4}
+;;
+;; (let ((regex (cl-ppcre:create-scanner "^_anon\:[0-9a-f]{8}(\-[0-9a-f]{4}){3}-[0-9a-f]{12}$")))
+;;   (cl-ppcre:scan regex (concatenate 'string "_anon:" (unicly::princ-to-string (unicly:make-v4-uuid)))))
+;; => 0, 42, #(24), #(29)
+;;
+;; (let ((regex (cl-ppcre:create-scanner "^_anon\:[0-9a-f]{8}(\-[0-9a-f]{4}){3}-[0-9a-f]{12}$")))
+;;   (cl-ppcre:scan regex (concatenate 'string "_anon:" (format nil "~S" (uuid:make-v4-uuid)))))
+;; => NIL
 (let ((regex 
+       ;; (cl-ppcre:create-scanner "^_anon\:[0-9a-f]{8}(\-[0-9a-f]{4}){3}-[0-9a-f]{12}$"))
        "^_anon\:[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$"))
   (defun anonymous? (node)
     (and (stringp node)
 	 (cl-ppcre:scan regex node))))
+
+
 
 (defun make-text-idx-key (g s p o)
   (string-downcase (format nil "~A~A~A~A~A~A~A" g #\Nul s #\Nul p #\Nul o)))
