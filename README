@@ -50,6 +50,9 @@ To get you started:
 ;;
 (get-triples-list :s "Kevin")
 (get-triples-list :p "is-a")
+(get-triples-list :p "likes")
+(get-triples-list :o "human")
+
 (close-triple-store :store *store*)
 
 (open-triple-store :name "test store" :location "/var/tmp/db")
