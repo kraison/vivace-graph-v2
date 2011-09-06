@@ -33,7 +33,7 @@ It is assumed that STRINGED-NODE-NAME has already processed with `string-downcas
             (special *anonymous-node-namespace*)
             (uuid *anonymous-node-namespace*))
    (uuid:make-v5-uuid *anonymous-node-namespace* stringed-node-name))
-
+`
  (defmacro tt--deftemplate (name &rest slots)
    (unless (triple-store? *store*)
      (error "deftemplate ~A: *store* is not bound to a triple store!" name))

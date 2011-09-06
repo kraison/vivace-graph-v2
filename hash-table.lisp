@@ -98,17 +98,18 @@
   (declare #+sbcl (sb-thread::spinlock spinlock))
   #-sbcl (error "not implemented -- what is the equivalent of sb-thread::spinlock-value")
   #+sbcl (sb-thread::spinlock-value spinlock))
-
+;; :FIXME I don't think I've correctly implementated a correct abstraction around CAS!
 (defun vg-compare-and-swap-spinlock-value (cas-spinlock cas-old cas-new)
-  #+sbcl (declare (sb-thread::spinlock spinlock)
-                  (inline vg-get-spinlock-value))  
+  #+sbcl (declare (sb-thread::spinlock cas-spinlock)
+                  (inline vg-get-spinlock-value))
   #-sbcl (error "not implemented -- what is the equivalent of sb-ext:compare-and-swap?")
-  #+sbcl (sb-ext:compare-and-swap (vg-get-spinlock-value spinlock) cas-old cas-new))
+  #+sbcl
+  (sb-ext:compare-and-swap (vg-get-spinlock-value cas-spinlock) cas-old cas-new))
 
 (defun vg-get-hash-table-spinlock (hash-table)
   (declare (hash-table hash-table))
   #-sbcl (error "not implemented -- what is the equivalent of sb-impl:hash-table-spinlock?")
-  #+sbcl (sb-impl:hash-table-spinlock hash-table))
+  #+sbcl (sb-impl::hash-table-spinlock hash-table))
 
 (defun vg-get-hash-table-spinlock-value (hash-table)
   (declare (hash-table hash-table)
@@ -134,7 +135,7 @@
   #+sbcl (not sb-sys:*interrupts-enabled*))
 
 (defun vg-interrupts-allowed-and-not-enabled-check ()
-  #+sbcl (declaim (inline vg-interrupts-not-enabled-check
+  #+sbcl (declare (inline vg-interrupts-not-enabled-check
                           vg-allow-with-interrupts))
   (and (vg-interrups-not-enabled-check)
        (vg-allow-with-interrupts)))
@@ -147,7 +148,7 @@
   #+sbcl (sb-thread:thread-yield))
 
 (defun vg-unix-interrupts-check ()
-  #+sbcl (error "not implemented -- what is equivalent of sb-unix::%check-interrupts?")
+  #-sbcl (error "not implemented -- what is equivalent of sb-unix::%check-interrupts?")
   #+sbcl (sb-unix::%check-interrupts))
 
 (defun vg-release-spinlock (spinlock)
@@ -157,7 +158,7 @@
 (defun vg-get-spinlock (spinlock)
   #+sbcl (declare (inline vg-current-thread
                           vg-get-spinlock-value
-                          vg-compare-and-swap-spinlock-value
+                          ;; vg-compare-and-swap-spinlock-value
                           vg-allow-with-interrupts
                           vg-interrupts-not-enabled-check
                           vg-interrupts-allowed-and-not-enabled-check
@@ -165,12 +166,15 @@
                           vg-unix-interrupts-check)
                   (optimize (speed 3) (safety 0)))
   (let* ((new (vg-current-thread))
-         (old (vg-compare-and-swap-spinlock-value spinlock nil new)))
+         (old ;; (vg-compare-and-swap-spinlock-value spinlock nil new)))
+          (sb-ext:compare-and-swap (vg-get-spinlock-value cas-spinlock) nil new)))
     (when old
       (when (eq old new)
         (error "Recursive lock attempt on ~S." spinlock))
       (flet ((cas ()
-               (if (vg-compare-and-swap-spinlock-value spinlock nil new)
+               (if 
+                (sb-ext:compare-and-swap (vg-get-spinlock-value cas-spinlock) nil new)
+                ;;  (vg-compare-and-swap-spinlock-value spinlock nil new)
                    ;; :NOTE I _really_ hope this `sleep'ing is for
                    ;; thread-interrupts and not just to accomodate 
                    ;; 'uuid:make-v1-uuid' while it bangs on the system clock!...
