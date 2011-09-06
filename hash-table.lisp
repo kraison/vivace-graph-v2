@@ -4,15 +4,16 @@
 ;;; ==============================
 ;;
 ;; AFAICT It will be difficult to fully abstract away SBCL's spinlocks/mutex with bordeaux-threads 
-;; (bordeaux-threads:release-lock   <-- sb-thread:release-mutex
+;; bordeaux-threads:release-lock   <-- sb-thread:release-mutex
 ;; (sb-thread::release-spinlock (sb-impl::hash-table-spinlock hash-table))
 ;;
-;; SBCL's hash-table's are implemented as STRUCTURE-OBJECT with and
-;; sb-impl::hash-table-spinlock as an slot.  The spinlock is used for locking 
-;; cl:gethash/(setf cl:gethash)/cl:remhash and looks like this:
+;; SBCL's hash-table's are implemented as STRUCTURE-OBJECT with
+;; sb-impl::hash-table-spinlock as one of its slots. 
+;; The spinlock is used for locking cl:gethash/(setf cl:gethash)/cl:remhash and
+;; looks like this:
 ;;
-;; (spinlock (sb-thread::make-spinlock :name "hash-table lock")
-;;           :type sb-thread::spinlock :read-only t)
+;;  (spinlock (sb-thread::make-spinlock :name "hash-table lock")
+;;            :type sb-thread::spinlock :read-only t)
 ;;
 ;; IOW, there doesn't appear to be MUTEX.
 ;; 
@@ -34,7 +35,7 @@
 ;;   (state    0 :type fixnum)
 ;;   #!+(and sb-lutex sb-thread)
 ;;   (lutex (make-lutex)))
-
+;;
 ;;; ==============================
 ;;
 ;; (defstruct tt--spinlock
@@ -57,7 +58,7 @@
 ;; (let ((spin (make-tt--spinlock :name "my lock")))
 ;;   (setf (tt--spinlock-value spin) 42)
 ;;   spin)
-;;=> #S(TT--SPINLOCK :NAME "my lock" :VALUE 42)
+;; ;=> #S(TT--SPINLOCK :NAME "my lock" :VALUE 42)
 ;;
 ;;; ==============================
 
