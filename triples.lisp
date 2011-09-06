@@ -337,6 +337,7 @@
   (let ((triple-count 0))
     (with-locked-index ((main-idx store))
       (maphash #'(lambda (id triple)
+                   ;; (declare (ignorable id))
 		   (when (not (deleted? triple)) (incf triple-count)))
 	       (gethash :id-idx (index-table (main-idx store)))))
     triple-count))
