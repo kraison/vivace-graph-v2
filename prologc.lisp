@@ -27,8 +27,8 @@
 (defun bound-p (var) (not (eq (var-binding var) +unbound+)))
 
 (defgeneric prolog-equal (x y)
-  (:documentation "Generic equality operator for prolog unification. Specialize this 
-for new types that will be stored in the db.")
+  (:documentation "Generic equality operator for prolog unification. Specialize 
+this for new types that will be stored in the db.")
   (:method ((x number) (y number)) (= x y))
   (:method ((x string) (y string)) (string= x y))
   (:method ((x character) (y character)) (char= x y))
@@ -260,23 +260,23 @@ for new types that will be stored in the db.")
          (x1 (if xb (cdr xb) x))
          (yb (if (variable-p y) (follow-binding y bindings)))
          (y1 (if yb (cdr yb) y)))
-    (cond                                                 ; Case:
-      ((or (eq x '?) (eq y '?)) (values t bindings))      ; 12
-      ((not (and (prolog-equal x x1) (prolog-equal y y1)))              ; deref
+    (cond                                                  ; Case:
+      ((or (eq x '?) (eq y '?)) (values t bindings))       ; 12
+      ((not (and (prolog-equal x x1) (prolog-equal y y1))) ; deref
        (compile-unify x1 y1 bindings))
-      ((find-anywhere x1 y1) (values nil bindings))       ; 11
-      ((consp y1)                                         ; 7,10
+      ((find-anywhere x1 y1) (values nil bindings))        ; 11
+      ((consp y1)                                          ; 7,10
        (values `(unify ,x1 ,(compile-arg y1 bindings))
                (bind-variables-in y1 bindings)))
       ((not (null xb))
        ;; i.e. x is an ?arg variable
        (if (and (variable-p y1) (null yb))
-           (values 't (extend-bindings y1 x1 bindings))   ; 4
+           (values 't (extend-bindings y1 x1 bindings))    ; 4
            (values `(unify ,x1 ,(compile-arg y1 bindings))
-                   (extend-bindings x1 y1 bindings))))    ; 5,6
+                   (extend-bindings x1 y1 bindings))))     ; 5,6
       ((not (null yb))
        (compile-unify-variable y1 x1 bindings))
-      (t (values 't (extend-bindings x1 y1 bindings)))))) ; 8,9
+      (t (values 't (extend-bindings x1 y1 bindings))))))  ; 8,9
 
 (defun bind-variables-in (exp bindings)
   "Bind all variables in exp to themselves, and add that to
@@ -352,7 +352,8 @@ for new types that will be stored in the db.")
 	    (clause-body clause))
 	   cont
 	   (mapcar #'self-cons parms)))))
-    (when *prolog-trace* (format t "TRACE: ~A BODY:~% ~A~%" (clause-head clause) body))
+    (when *prolog-trace* 
+      (format t "TRACE: ~A BODY:~% ~A~%" (clause-head clause) body))
     body))
 
 (defun add-clause (clause)
@@ -364,7 +365,8 @@ for new types that will be stored in the db.")
 	   (functor (make-functor-symbol functor-name arity)))
       (if (gethash functor *prolog-global-functors*)
 	  (error 'prolog-error 
-		 :reason (format nil "Cannot override default functor ~A." functor))
+		 :reason 
+		 (format nil "Cannot override default functor ~A." functor))
 	  (let ((f (lookup-functor functor)))
 	    (if (functor? f)
 		(add-functor-clause f clause)
@@ -437,7 +439,8 @@ for new types that will be stored in the db.")
              (return-from ,*functor* nil)))
     (t (let* ((goal (first body))
               (macro (prolog-compiler-macro (predicate goal)))
-              (macro-val (if macro (funcall macro goal (rest body) cont bindings))))
+              (macro-val (if macro 
+			     (funcall macro goal (rest body) cont bindings))))
 	 (if (and macro (not (eq macro-val :pass)))
 	     macro-val
 	     (compile-call (predicate goal) (relation-arity goal)
@@ -494,13 +497,14 @@ for new types that will be stored in the db.")
 			      (handler-case
 				  (block ,*functor*
 				    .,(maybe-add-undo-bindings
-				       (mapcar #'(lambda (clause)
-						   (compile-clause nil clause 'cont))
-					       `(((,top-level-query)
-						  ,@goals
-						  (show-prolog-vars 
-						   ,(mapcar #'symbol-name vars)
-						   ,vars))))))
+				       (mapcar 
+					#'(lambda (clause)
+					    (compile-clause nil clause 'cont))
+					`(((,top-level-query)
+					   ,@goals
+					   (show-prolog-vars 
+					    ,(mapcar #'symbol-name vars)
+					    ,vars))))))
 				(undefined-function (condition)
 				  (error 'prolog-error :reason condition))))))
 		(set-functor-fn *functor* func)
@@ -515,8 +519,9 @@ for new types that will be stored in the db.")
 (defmacro select (vars &rest goals)
   "Select specific variables as a list of lists using the following form:
  (select (?x ?y) (is-a ?x ?y)) could return ((Joe Human) (Spot Dog)) and
- (select ((:entity ?x) (:species ?y)) could return (((:entity Joe) (:species Human)) 
-                                                    ((:entity Spot)(:species Dog)))"
+ (select ((:entity ?x) (:species ?y)) could return 
+ (((:entity Joe) (:species Human)) 
+  ((:entity Spot)(:species Dog)))"
   (let* ((top-level-query (gensym "PROVE"))
 	 (goals (replace-?-vars goals))
 	 (*functor* (make-functor-symbol top-level-query 0)))
@@ -536,11 +541,12 @@ for new types that will be stored in the db.")
 					`(((,top-level-query)
 					   ,@goals
 					   (select 
-					    ,(mapcar #'(lambda (var)
-							 (typecase var
-							   (symbol (symbol-name var))
-							   (list (first var))))
-						     vars) ,vars))))))
+					    ,(mapcar 
+					      #'(lambda (var)
+						  (typecase var
+						    (symbol (symbol-name var))
+						    (list (first var))))
+					      vars) ,vars))))))
 			 (undefined-function (condition)
 			   (error 'prolog-error :reason condition))))))
 	      (set-functor-fn *functor* func)
@@ -561,8 +567,8 @@ for new types that will be stored in the db.")
   `(select () ,@goals))
 
 (defmacro map-query (fn query &key collect?)
-  "Maps fn over the results of query. collect? will return a list of the results of 
-each application of fn."
+  "Maps fn over the results of query. collect? will return a list of the results
+of each application of fn."
   (with-gensyms (result)
     (if collect?
 	`(mapcar #'(lambda (,result)
@@ -578,7 +584,6 @@ each application of fn."
     (select-flat t)
     (select-first t)
     (<- t)
-    (insertt)
+    ;; (insertt)
+    (insert t)
     (otherwise nil)))
-
-

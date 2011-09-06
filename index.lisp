@@ -2,6 +2,7 @@
 
 (defstruct index-cursor index vector pointer)
 
+;; :NOTE It doesn't appear that `idx-equal' has callers.
 (defgeneric idx-equal (a b)
   (:method ((a string) (b string)) (string= a b))
   (:method ((a number) (b number)) (= a b))
@@ -84,7 +85,8 @@
 			      (typecase v
 				(hash-table (fetch-all v))
 				(list 
-				 (dolist (leaf v) (vector-push-extend leaf leaves)))
+				 (dolist (leaf v) 
+				   (vector-push-extend leaf leaves)))
 				(t (vector-push-extend v leaves))))
 			  ht1))))
       (fetch-all ht))
@@ -139,8 +141,10 @@
 
 (defun get-from-index (index &rest keys)
   (let ((result (descend-ht (index-table index) keys)))
-    (cond ((null result) (make-index-cursor :index index :vector #() :pointer 0))
-	  ((vectorp result) (make-index-cursor :index index :vector result :pointer 0))
+    (cond ((null result) 
+	   (make-index-cursor :index index :vector #() :pointer 0))
+	  ((vectorp result) 
+	   (make-index-cursor :index index :vector result :pointer 0))
 	  (t result))))
 
 (defun find-or-create-ht (ht keys create-fn &optional (d 0))
@@ -154,7 +158,8 @@
 	((= 1 (length (rest keys)))
 	 (values (gethash (first keys) ht) (first (rest keys))))
 	(t
-	 (find-or-create-ht (gethash (first keys) ht) (rest keys) create-fn (1+ d)))))
+	 (find-or-create-ht (gethash (first keys) ht) 
+			    (rest keys) create-fn (1+ d)))))
 
 (defun add-to-index (index value &rest keys)
   (let ((ht (find-or-create-ht (index-table index) 
@@ -164,6 +169,10 @@
 						    :test (index-test index))))))
     (setf (gethash (car (last keys)) ht) value)))
 
+;; :NOTE what happens if some indexes are allowed to have weak references?
+;; Wouldn't this allow non-referenced key/values to delete silently?
+;; And if so, would weak hashes provide some of the (as yet unimplemented)
+;; features of `delete-from-index'?
 (defun delete-from-index (index value &rest keys)
   ;; FIXME: implement
   (declare (ignore index value keys)))
@@ -184,14 +193,15 @@
 (defmacro with-locked-index ((idx &rest keys) &body body)
   (if keys
       (with-gensyms (sub-idx last-key)
-	`(multiple-value-bind (,sub-idx ,last-key) (get-table-to-lock ,idx ,@keys)
+	`(multiple-value-bind (,sub-idx ,last-key) 
+	     (get-table-to-lock ,idx ,@keys)
 	   (sb-ext:with-locked-hash-table (,sub-idx)
 	     ;;(format t "Locked ht ~A / ~A~%" ,last-key ,sub-idx)
 	     ,@body)))
       `(sb-ext:with-locked-hash-table ((index-table ,idx))
 	 ,@body)))
 
-
+;; (test-index)
 (defun test-index ()
   (let ((index (make-hierarchical-index :test 'equal)))
     (add-to-index index "abc" "a" "b" "c")
@@ -202,4 +212,6 @@
     (add-to-index index "aby" "a" "b" "y")
     (add-to-index index "acy" "a" "c" "y")
     (add-to-index index "bcy" "b" "c" "y")
+    ;; (get-from-index index "b" "c")
     (get-from-index index "a" "b")))
+    

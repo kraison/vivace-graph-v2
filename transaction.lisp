@@ -44,7 +44,8 @@
 					    :name :wild :type :wild)))
       (when (and (pathname-match-p file "tx-*") 
 		 (or (null timestamp)
-		     (and (numberp timestamp) (> (file-write-date file) timestamp))))
+		     (and (numberp timestamp) 
+			  (> (file-write-date file) timestamp))))
 	(format t "Found transaction file ~A~%" file)
 	(push file transaction-logs)))
     (sort transaction-logs
@@ -65,7 +66,8 @@
     (with-open-file (stream file :element-type '(unsigned-byte 8))
       (let ((magic-byte (read-byte stream nil :eof)))
 	(unless (= +transaction+ magic-byte)
-	  (error 'transaction-error :reason (format nil "~A is not a tx file!" file)))
+	  (error 'transaction-error 
+		 :reason (format nil "~A is not a tx file!" file)))
 	(deserialize-action magic-byte stream)))))
 
 (defun restore-triple-store (store)
@@ -86,17 +88,19 @@
 	store))))
 
 (defun snapshot (store)
-  (with-open-file (stream 
-		   (format nil "~A/snap-~A" (location store) (get-universal-time))
-		   :direction :output 
-		   :element-type '(unsigned-byte 8)
-		   :if-exists :overwrite
-		   :if-does-not-exist :create)
+  (with-open-file 
+      (stream 
+       (format nil "~A/snap-~A" (location store) (get-universal-time))
+       :direction :output 
+       :element-type '(unsigned-byte 8)
+       :if-exists :overwrite
+       :if-does-not-exist :create)
     (with-locked-index ((main-idx store))
       (maphash #'(lambda (id triple)
 		   (declare (ignore id))
 		   (when (persistent? triple)
-		     (logger :info "serializing ~A: ~A" (triple-id triple) triple)
+		     (logger :info "serializing ~A: ~A" 
+			     (triple-id triple) triple)
 		     (serialize triple stream)))
 	       (gethash :id-idx (index-table (main-idx store)))))
     (logger :info "Recording null byte")
@@ -124,13 +128,15 @@
 
 (defun clear-tx-log (store)
   (dolist (file (directory 
-		 (make-pathname :directory (location store) :name :wild :type :wild)))
+		 (make-pathname :directory (location store) 
+				:name :wild :type :wild)))
     (when (pathname-match-p file "tx-*")
       (delete-file file))))
 
 (defun clear-snapshots (store)
   (dolist (file (directory 
-		 (make-pathname :directory (location store) :name :wild :type :wild)))
+		 (make-pathname :directory (location store) 
+				:name :wild :type :wild)))
     (when (pathname-match-p file "snap-*")
       (delete-file file))))
 
@@ -144,10 +150,11 @@
   (when (and (transaction? tx) (tx-queue tx))
     (logger :info "Recording tx ~A~%" (reverse (tx-queue tx)))
     (handler-case
-	(with-open-file (stream (format nil "~A/tx-~A-~A" (location store) 
-					(get-universal-time) (incf *file-counter*))
-				:element-type '(unsigned-byte 8) :direction :output
-				:if-exists :rename :if-does-not-exist :create)
+	(with-open-file (stream 
+			 (format nil "~A/tx-~A-~A" (location store) 
+				 (get-universal-time) (incf *file-counter*))
+			 :element-type '(unsigned-byte 8) :direction :output
+			 :if-exists :rename :if-does-not-exist :create)
 	  (set-dirty store)
 	  (dump-transaction stream tx))
       (error (c)
@@ -199,7 +206,8 @@
 			(setq last-snapshot (gettimeofday))
 			(logger :info "Snapshot finished"))
 		       (otherwise 
-			(logger :info "Unknown msg to tx-log thread: ~A" msg))))))
+			(logger :info "Unknown msg to tx-log thread: ~A" 
+				msg))))))
 	      (error (condition)
 		(logger :err "Unhandled error in tx logger for ~A: ~A" 
 			store condition))))))
@@ -229,32 +237,39 @@
 (defun execute-tx (store fn timeout max-tries retries)
   (if (>= retries max-tries)
       (error 'transaction-error
-	     :reason (format nil "Unable to execute transaction. Too may retries (~A)."
-			     retries))
+	     :reason 
+	     (format nil "Unable to execute transaction. Too may retries (~A)."
+		     retries))
       (let ((*current-transaction* (make-transaction :store store)))
 	(logger :info "~A execute-tx starting" *current-transaction*)
 	(handler-case
 	    (sb-ext:with-timeout timeout
 	      (funcall fn))
 	  (sb-ext:timeout (condition)
-	    (logger :info "~A execute-tx timeout ~A" *current-transaction* condition)
+	    (logger :info "~A execute-tx timeout ~A" 
+		    *current-transaction* condition)
 	    (rollback-tx *current-transaction*)
 	    (release-all-locks *current-transaction*)
 	    (execute-tx store fn timeout max-tries (1+ retries)))
 	  (error (condition)
-	    (logger :info "~A execute-tx error ~A" *current-transaction* condition)
+	    (logger :info "~A execute-tx error ~A" 
+		    *current-transaction* condition)
 	    (rollback-tx *current-transaction*)
 	    (release-all-locks *current-transaction*)
 	    (error 'transaction-error 
-		   :reason (format nil "Unable to execute transaction: ~A" condition)))
+		   :reason 
+		   (format nil "Unable to execute transaction: ~A" condition)))
 	  (:no-error (result)
-	    (logger :info "~A execute-tx success (~A)" *current-transaction* result)
+	    (logger :info "~A execute-tx success (~A)" 
+		    *current-transaction* result)
 	    (when (tx-queue *current-transaction*)
-	      (sb-concurrency:send-message (log-mailbox store) *current-transaction*))
+	      (sb-concurrency:send-message 
+	       (log-mailbox store) *current-transaction*))
 	    (release-all-locks *current-transaction*)
 	    result)))))
 
-(defmacro with-graph-transaction ((store &key (timeout 10) (max-tries 10)) &body body)
+(defmacro with-graph-transaction ((store &key (timeout 10) (max-tries 10)) 
+				  &body body)
   (with-gensyms (atomic-op)
     `(let ((,atomic-op #'(lambda () ,@body)))
        (cond ((and (transaction? *current-transaction*)
@@ -263,6 +278,7 @@
 	      (funcall ,atomic-op))
 	     ((transaction? *current-transaction*)
 	      (error 'transaction-error
-		     :reason "Transactions cannot currently span multiple stores."))
+		     :reason 
+		     "Transactions cannot currently span multiple stores."))
 	     (t
 	      (execute-tx ,store ,atomic-op ,timeout ,max-tries 0))))))

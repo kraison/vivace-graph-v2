@@ -1,0 +1,81 @@
+;;; :FILE-CREATED <Timestamp: #{2011-09-04T13:05:03-04:00Z}#{11357} - by MON>
+;;; :FILE vivace-graph-v2-FORK/TODO
+;;; ==============================
+
+Following TODO adapted from the following two threads posted to
+vivace-graph-devel mailing list:
+
+ [vivace-graph-devel] vivace-graph todo list
+ Kevin Raison raison at chatsubo.net
+ Tue Feb 1 00:15:23 EST 2011
+ (URL `http://lists.common-lisp.net/pipermail/vivace-graph-devel/2011-February/000000.html')
+
+ [vivace-graph-devel] vivace-graph moving again
+ Kevin Raison raison at chatsubo.net
+ Sat Jul 2 17:00:43 PDT 2011
+ (URL `http://lists.common-lisp.net/pipermail/vivace-graph-devel/2011-July/000002.html')
+
+I (mon-key) have replaced the original per item numeric annotations with
+asterisks and changed the read order to accomodate re-grouping of related
+tasks. This re-grouping occured under the assumption that the original numeric
+ordering of KR's requirements did necessarily imply that some requierment-A was
+implicitly more important / required than some other requirement-Z.
+
+;;; ==============================
+The major things that need to be done to satisfy my personal requirements:
+
+*  Stabilize transaction logging.
+
+*   Remove the SBCL-specific code that litters the project.
+
+*   Make a choice on what sort of on-disk storage mechanism to use.  
+    Currently, all data must fit in RAM and is persisted via snapshotting and
+    transaction logging.
+
+    I would like to add a second option where, as in a standard database, data
+    can be stored in a disk-based structure. 
+
+     - B+Trees  
+
+     - Fractal Prefetching B+Trees 
+       (http://reports-archive.adm.cs.cmu.edu/anon/2002/CMU-CS-02-115.pdf)?
+
+     - B-Tries
+       I expressed concern to Red and Ilya about using B-trees, given the
+       extremely high fanout of the indices.
+
+       I was considering something like B-tries, as described in this paper:
+        (URL `http://www.naskitis.com/naskitis-vldbj09.pdf').
+
+*   Spend some time on the text indexing piece.
+    It currently uses my cl-skip-list, but should be moved into a B-tree.
+
+*   While triples are thread safe, Prolog may or may not be.
+    This should be investigated and fixed where necessary.
+
+*   Fix lexical env issues between Prolog and Lisp.
+    Currently, importing a Lisp variable into Prolog requires that it be
+    declared SPECIAL.  This is because the Prolog implementation is based on
+    Norvig's PAIP, which uses CL:EVAL.  A better solution should be found.
+
+*   Add reciprocal reasoning. 
+     (has-child implies has-parent)
+
+*   Factor out the certainty factors code.
+     - Make CFs first class triples
+       Currently these are a mutable fields of the structure TRIPLE. 
+
+*   Incorporate Geospatial / Temporal reasoning
+
+*   Incorporate forward chaining rules engine.
+     (Rete or LEAPS-derived)
+
+*   Incorporate more RDF-related stuff. 
+    (Sparql, N-Triples parser / loader, etc.)
+
+*   Implement a protocol for submitting queries over the network.
+
+
+
+;;; ==============================
+;;; EOF

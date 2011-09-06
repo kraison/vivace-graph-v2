@@ -1,7 +1,22 @@
 (in-package #:vivace-graph-v2)
 
+(defgeneric triple-eql (t1 t2)
+  (:method ((t1 triple) (t2 triple)) 
+    (vg-uuid:uuid-eql (id t1) (id t2)))
+  (:method (t1 t2) nil))
+
 (defgeneric triple-equal (t1 t2)
-  (:method ((t1 triple) (t2 triple)) (vg-uuid:uuid-eql (id t1) (id t2)))
+  (:method ((t1 triple) (t2 triple)) 
+    (and (vg-uuid:uuid-eql (id t1) (id t2))
+	 (equal (triple-subject t1) (triple-subject t2))
+	 (equal (triple-predicate t1) (triple-predicate t2))
+	 (equal (triple-object t1) (triple-object t2))))
+  (:method (t1 t2) nil))
+
+(defgeneric triple-equalp (t1 t2)
+  (:method ((t1 triple) (t2 triple)) 
+    (and (triple-equal t1 t2)
+	 (equal (triple-graph t1) (triple-graph t2))))
   (:method (t1 t2) nil))
 
 (defmethod deleted? ((triple triple))
@@ -20,7 +35,7 @@
   (if (not *read-uncommitted*)
       (with-graph-transaction (*store*)
 	(enqueue-lock triple (lock-triple triple :kind :read) :read)
-	(get-value))
+ 	(get-value))
       (get-value))))
 
 (defmethod subject ((list list))
@@ -29,7 +44,8 @@
 (defmethod predicate ((triple triple))
   (flet ((get-value ()
 	   (if (and (symbolp (triple-predicate triple)) 
-		    (eq *graph-words* (symbol-package (triple-predicate triple))))
+		    (eq *graph-words* 
+			(symbol-package (triple-predicate triple))))
 	       (symbol-name (triple-predicate triple))
 	       (triple-predicate triple))))
     (if (not *read-uncommitted*)
@@ -97,15 +113,35 @@
 	(triple-persistent? triple))
       (triple-persistent? triple)))
 
+;; :NOTE Our initial naive assumption is that it may be faster to use
+;; `make-v4-uuid' esp. as long as the rest of the system continues using
+;; `vg-uuid:make-v1-uuid', using a v4-uuid we could then check `anonymous?' by
+;; examining if the version 4 bit is set. This said, it would be _much_ cleaner
+;; to eschew v1 uuids completely int the the UUID reliant portions of the
+;; system by using v3 or v5 UUIDs instead.
 (defun make-anonymous-node ()
-  "Create a unique anonymous node."
+  "Create a unique anonymous node.
+:SEE-ALSO `deftemplate'"
   (format nil "_anon:~A" (vg-uuid:make-v1-uuid)))
 
+;; If the uuid library were more like Unicly it would do "the right thing" per
+;; the RFC by case-sensitively printing hex chars of UUID objects in lower
+;; case...  There is a minor performance optimization to be had by avoiding
+;; having to match [a-fA-F] and instead matching only [a-f]{4}
+;;
+;; (let ((regex (cl-ppcre:create-scanner "^_anon\:[0-9a-f]{8}(\-[0-9a-f]{4}){3}-[0-9a-f]{12}$")))
+;;   (cl-ppcre:scan regex (concatenate 'string "_anon:" (unicly::princ-to-string (unicly:make-v4-uuid)))))
+;; => 0, 42, #(24), #(29)
+;;
+;; (let ((regex (cl-ppcre:create-scanner "^_anon\:[0-9a-f]{8}(\-[0-9a-f]{4}){3}-[0-9a-f]{12}$")))
+;;   (cl-ppcre:scan regex (concatenate 'string "_anon:" (format nil "~S" (uuid:make-v4-uuid)))))
+;; => NIL
 (let ((regex 
-       "^_anon\:[0-9abcdefABCEDF]{8}\-[0-9abcdefABCEDF]{4}\-[0-9abcdefABCEDF]{4}\-[0-9abcdefABCEDF]{4}\-[0-9abcdefABCEDF]{12}$"))
+       ;; (cl-ppcre:create-scanner "^_anon\:[0-9a-f]{8}(\-[0-9a-f]{4}){3}-[0-9a-f]{12}$"))
+       "^_anon\:[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}$"))
   (defun anonymous? (node)
-    (when (stringp node)
-      (cl-ppcre:scan regex node))))
+    (and (stringp node)
+	 (cl-ppcre:scan regex node))))
 
 (defun make-text-idx-key (g s p o)
   (string-downcase (format nil "~A~A~A~A~A~A~A" g #\Nul s #\Nul p #\Nul o)))
@@ -116,6 +152,7 @@
 (defun unindex-predicate (name-string)
   (setf (gethash name-string (indexed-predicates *store*)) nil))
 
+;; This method appears to be unused.
 (defmethod make-anonymous-node-name ((uuid uuid:uuid))
   (format nil "_anon:~A" uuid))
 

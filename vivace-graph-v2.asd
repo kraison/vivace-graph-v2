@@ -10,12 +10,11 @@
   :version "0.2"
   :description "Vivace Graph Version 2"
   :long-description "Vivace Graph Version 2."
-  :depends-on (:sb-concurrency
-	       :sb-posix
-               :babel
+  :depends-on (:babel
+	       #+sbcl :sb-concurrency
+	       #+sbcl :sb-posix
 	       :cffi
 	       :bordeaux-threads
-	       ;;:cl-btree-0.5
 	       :cl-skip-list
 	       :salza2
 	       :chipz
@@ -30,11 +29,10 @@
 	       :cl-js
 	       :cl-json)
   :components ((:file "uuid-bridge")
-	       #+sbcl (:file "sb-impl")
-	       #+sbcl (:file "sb-thread")
 	       (:file "vivace-graph-v2-package" :depends-on ("uuid-bridge"))
-	       (:file "hash-table" 
-		      :depends-on ("vivace-graph-v2-package" "sb-impl" "sb-thread"))
+	       ;; #+sbcl (:file "sb-impl")
+	       ;; #+sbcl (:file "sb-thread")
+	       (:file "hash-table" :depends-on ("vivace-graph-v2-package")) ;;"sb-thread")) 
 	       (:file "gettimeofday" :depends-on ("vivace-graph-v2-package"))
 	       (:file "conditions" :depends-on ("vivace-graph-v2-package"))
 	       (:file "constants" :depends-on ("conditions"))
@@ -54,4 +52,6 @@
 	       (:file "triples" :depends-on ("functor" "gettimeofday"))
 	       (:file "prologc" :depends-on ("triples"))
 	       (:file "prolog-functors" :depends-on ("prologc"))
-	       (:file "templates" :depends-on ("prolog-functors"))))
+	       (:file "templates" :depends-on ("prolog-functors"))
+               (:file "vivace-graph-v2-doc-utils")
+               (:file "vivace-graph-v2-docs" :depends-on ("vivace-graph-v2-doc-utils"))))

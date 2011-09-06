@@ -22,5 +22,12 @@
 	     (:print-function print-triple)
 	     (:conc-name triple-)
 	     (:predicate triple?))
-  subject predicate object graph id (deleted? nil) (cf +cf-true+) (persistent? t))
+  subject 
+  predicate 
+  object 
+  graph 
+  id 
+  (deleted? nil) 
+  (cf +cf-true+) 
+  (persistent? t))
 

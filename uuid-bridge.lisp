@@ -1,23 +1,53 @@
-
+;;; :FILE-CREATED <Timestamp: #{2011-09-05T13:10:36-04:00Z}#{11361} - by MON>
+;;; :FILE vivace-graph-v2-FORK/uuid-bridge.lisp
+;;; ==============================
 
 ;;; ==============================
-;; (in-package #:uuid)
+;; :NOTE vivace-graph-v2/uuid-bridge.lisp relocats symbols previously found in:
+;;   vivace-graph-v2/uuid.lisp
+;;   vivace-graph-v2/data-types.lisp
+;; 
+;;  symbols previously defined in vivace-graph-v2/uuid.lisp
+;; `uuid?'
+;; `uuid-eql'
+;; `serialize-uuid'
 ;;
-;; (export 'uuid::time-low)
-;; (export 'time-mid)
-;; (export 'time-high)
-;; (export 'clock-seq-var)
-;; (export 'clock-seq-low)
-;; (export 'node)
-;; (export 'time-high-and-version)
-;; (export 'clock-seq-and-reserved)
-;; (export 'uuid-eql)
-;; (export 'uuid?)
-;; (export 'serialize-uuid)
-
+;;  symbols previously defined in vivace-graph-v2/data-types.lisp
+;; `make-uuid'
+;; `sxhash-uuid'
+;; `make-uuid-table'
+;;
+;; :RENAMED `make-uuid' -> `make-v1-uuid'
+;;
+;; This file creates a new package "VG-UUID".
+;; Orginally vivace-graph-v2/uuid.lisp operated inside the package "UUID" and in
+;; so doing redefined symbols in a namespace that is not under our control. Not
+;; only was this was ugly, but it makes experimentation with transitioning to
+;; the Unicly interface more difficult.
+;;
+;; Originally vivace-graph-v2/uuid.lisp redefined `uuid-to-byte-array'.  This
+;; does not appear needed b/c without the TYPE-SPECIFIER arg, the redefined
+;; function was otherwise identical to `uuid:uuid-to-byte-array' and I can't
+;; find any callers for `uuid-to-byte-array' outside this file and definitely
+;; not with TYPE-SPECIFIER non-nil.
+;;
+;; It is likely that the rationale for the redefinition was included in lieu of
+;; kyoto-persistence/uuid.lisp which defined `uuid-to-pointer' and which also
+;; has a TYPE-SPECIFIER parameter in its signature.
+;;
+;; kyoto-persistence`s `uuid-to-pointer' has one direct caller `serialize' in
+;; kyoto-persistence/serialize.lisp
+;; (defmethod serialize ((uuid uuid:uuid))
+;;   "Encode a UUID."
+;;   (uuid:uuid-to-pointer uuid +uuid+))
+;; (defconstant +uuid+ 12)
+;;
+;; IOW, I don't think the additional functionaliity is actually being used in
+;; vivace-graph-v2 as currently provided...
+;;
 ;;; ==============================
 
-
+
 (defpackage #:vg-uuid
   (:use :common-lisp)
   (:export #:uuid?
@@ -65,10 +95,14 @@
        for i from 15 downto 10
        do (write-byte (ldb (byte 8 (* 8 (- 15 i))) uuid::node) stream))))
 
-
-;;; UUIDs
+;; :WAS `make-uuid'
+;; :NOTE Our initial naive assumption is that it may be faster to use `make-v4-uuid'. 
+;; There doesn't appear to be a reliance on any the time based aspects of v1 uudis.
+;; This said, it would be _much_ cleaner to eschew v1 uuids completely and the
+;; other uuid reliant portions of the system to use of v3 or v5 UUIDs instead.
+;; :SEE related comments for `make-anonymous-node' in :FILE vivace-graph-v2-FORK/triples.lisp
 (defun make-v1-uuid ()
-  "Create a new UUID."
+  "Create a new version one UUID."
   (uuid:make-v1-uuid))
 
 (defun sxhash-uuid (uuid) (sxhash (uuid:print-bytes nil uuid)))
@@ -78,18 +112,7 @@
 (defun make-uuid-table (&key synchronized) 
   (make-hash-table :test 'vg-uuid:uuid-eql :synchronized synchronized))
 
-;; :NOTE without the TYPE-SPECIFIER arg this function is identical to `uuid:uuid-to-byte-array'
-;; I can't find any callers for `uuid-to-byte-array' outside this file and
-;; definitely not with TYPE-SPECIFIER non-nil.
-;; However, kyoto-persistence/uuid.lisp defines `uuid-to-pointer' which has a similar signature
-;; It has one direct caller `serialize' in kyoto-persistence/serialize.lisp 
-;; (defmethod serialize ((uuid uuid:uuid))
-;;   "Encode a UUID."
-;;   (uuid:uuid-to-pointer uuid +uuid+))
-;; (defconstant +uuid+ 12)
-;;
-;; IOW, I don't think the additional functionaliity is actually being used in
-;; vivace-graph-v2 as currently provided...
+
 ;; (defun uuid-to-byte-array (uuid &optional (type-specifier nil))
 ;;   "Converts an uuid to byte-array"
 ;;   (if type-specifier
@@ -134,3 +157,6 @@
 ;;              do (setf (aref array i) (ldb (byte 8 (* 8 (- 15 i))) uuid::node)))
 ;;           array))))
 
+
+;;; ==============================
+;;; EOF
