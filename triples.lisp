@@ -251,11 +251,14 @@
 
 (defun do-indexing (&optional (store *store*))
   (with-graph-transaction (store)
-    (loop for triple = (sb-concurrency:dequeue (index-queue store)) do
-	 (when (triple? triple)
-	   (index-triple triple *store*))
-	 (when (sb-concurrency:queue-empty-p (index-queue store))
-	   (return)))))
+    (loop 
+       ;; for triple = (sb-concurrency:dequeue (index-queue store))
+       for triple = (concurrent-dequeue (index-queue store))
+       do (when (triple? triple)
+            (index-triple triple *store*))
+       ;; (when (sb-concurrency:queue-empty-p (index-queue store))
+       (when (concurrent-queue-empty-p (index-queue store))
+         (return)))))
 
 (defun enqueue-triple-for-indexing (triple)
   (add-to-index-queue triple))

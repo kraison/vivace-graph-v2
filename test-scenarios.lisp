@@ -6,7 +6,7 @@
 
 (defun basic-concurrency-1 (&optional (store *store*))
   (let ((*store* store))
-    (let ((thr1 (make-thread 
+    (let ((thr1 (bt:make-thread 
 		 #'(lambda ()
 		     (with-graph-transaction (*store* :timeout 10)
 		       (let ((triple (add-triple "This" "is-a" "test" :graph "VGT")))
@@ -14,7 +14,7 @@
 				 (triple-id triple) triple)
 			 (setq *basic-concurrency-1* triple)
 			 (sleep 3))))))
-	  (thr2 (make-thread 
+	  (thr2 (bt:make-thread 
 		 #'(lambda ()
 		     (sleep 1)
 		     (let ((triple (add-triple
@@ -26,8 +26,8 @@
 			   (if (triple-equal triple *basic-concurrency-1*)
 			       (setq *basic-concurrency-1* triple)
 			       (setq *basic-concurrency-1* nil)))))))
-      (join-thread thr1)
-      (join-thread thr2)
+      (bt:join-thread thr1)
+      (bt:join-thread thr2)
       (format t "basic-concurrency-1: ~A~%" *basic-concurrency-1*)
       *basic-concurrency-1*)))
     
@@ -43,7 +43,7 @@
 			      (format t "basic-concurrency-2 read-thr: ~A~%" triple))
 			  (push (list (current-thread) triple) 
 				*basic-concurrency-2*))))))
-    (let ((thr1 (make-thread 
+    (let ((thr1 (bt:make-thread 
 		 #'(lambda ()
 		     (with-graph-transaction (*store* :timeout 10)
 		       (let ((triple (add-triple "This" "is-a" "test-2" :graph "VGT")))
@@ -51,24 +51,23 @@
 				 (triple-id triple) triple)
 			 (setq *triple-2* triple)
 			 (sleep 3))))))
-	  (thr2 (make-thread 
+	  (thr2 (bt:make-thread 
 		 #'(lambda ()
 		     (sleep 1)
-		     (let ((triple (add-triple
-				    "This" "is-a" "test-2" :graph "VGT")))
+		     (let ((triple (add-triple "This" "is-a" "test-2" :graph "VGT")))
 		       (if (triple? triple)
 			   (format t "basic-concurrency-2 thr2: ~A: ~A~%" 
 				   (triple-id triple) triple)
 			   (format t "basic-concurrency-2 thr2: ~A~%" triple))
 		       (push (list (current-thread) triple) *basic-concurrency-2*)))))
-	  (thr3 (make-thread read-fn))
-	  (thr4 (make-thread read-fn))
-	  (thr5 (make-thread read-fn)))
-      (join-thread thr1)
-      (join-thread thr2)
-      (join-thread thr3)
-      (join-thread thr4)
-      (join-thread thr5)
+	  (thr3 (bt:make-thread read-fn))
+	  (thr4 (bt:make-thread read-fn))
+	  (thr5 (bt:make-thread read-fn)))
+      (bt:join-thread thr1)
+      (bt:join-thread thr2)
+      (bt:join-thread thr3)
+      (bt:join-thread thr4)
+      (bt:join-thread thr5)
       (every #'(lambda (triple)
 		 (triple-equal (second triple) *triple-2*))
 	     *basic-concurrency-2*))))
