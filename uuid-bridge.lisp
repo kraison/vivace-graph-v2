@@ -54,6 +54,7 @@
            #:uuid-eql
            #:serialize-uuid
            #:make-v1-uuid
+           ;; #:make-v4-uuid
            ))
 
 (in-package #:vg-uuid)
