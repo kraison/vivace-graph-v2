@@ -105,6 +105,10 @@
   "Create a new version one UUID."
   (uuid:make-v1-uuid))
 
+(defun make-v4-uuid ()
+  "Create a new version four UUID."
+  (uuid:make-v4-uuid))
+
 (defun sxhash-uuid (uuid) (sxhash (uuid:print-bytes nil uuid)))
 
 (sb-ext:define-hash-table-test vg-uuid:uuid-eql sxhash-uuid)

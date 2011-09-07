@@ -204,6 +204,7 @@ query."
       (funcall cont)
       (throw 'top-level-prove nil)))
 
+;; :NOTE why cl:find-package if *graph-words* is already bound to package object?
 (let ((graph-pkg (find-package :graph-words)))
   (def-global-prolog-functor select/2 (var-names vars cont)
     (if (null vars)

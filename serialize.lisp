@@ -50,14 +50,17 @@
   ;; FIXME: what is the right length to enable compression?
   (if (and *compression-enabled?* (> (length string) 20))
       (let* ((comp (salza2:compress-data 
+                    ;;  we just took above -- :end (length string)
+                    ;; (flexi-streams:string-to-octets string :external-format :utf-8) 
 		    (babel:string-to-octets string) 'salza2:zlib-compressor))
 	     (length (length comp)))
 	(write-byte +compressed-string+ stream)
 	(serialize length stream)
 	(dotimes (i length)
 	  (write-byte (aref comp i) stream)))
-      (let* ((unicode (babel:string-to-octets string))
-	     (length (length unicode)))
+      (let* ;; ((unicode (flexi-streams:string-to-octets string :external-format :utf-8))
+          ((unicode (babel:string-to-octets string))
+           (length  (length unicode)))
 	(write-byte +string+ stream)
 	(serialize length stream)
 	(dotimes (i length)
@@ -90,7 +93,10 @@
 (defmethod serialize ((vector vector) (stream stream))
   (serialize-sequence vector stream +vector+))
 
+;; :NOTE why cl:find-package when *graph-words* is already bound in
+;; vivace-graph-v2/globals.lisp?
 (defun serialize-triple-help (triple stream)
+  ;; (let ((graph-pkg *graph-words*))
   (let ((graph-pkg (find-package 'graph-words)))
     (if (and (symbolp (subject triple)) 
 	     (eq (symbol-package (subject triple)) graph-pkg))
@@ -116,15 +122,21 @@
   (write-byte +triple+ stream)
   (serialize-triple-help triple stream))
 
+;; :NOTE why cl:find-package when *graph-words* is already bound in
+;; vivace-graph-v2/globals.lisp?
 (defmethod serialize-action ((action (eql :add-triple)) stream &rest args)
   (logger :debug "Serialize-action ~A: ~A~%" action args)
   (write-byte +add-triple+ stream)
   (if (triple? (first args))  
-      ;; We generally want to avoid this, as the triple could change between requested
-      ;; serialization and actual serialization.
+      ;; We generally want to avoid this, as the triple could change between
+      ;; requested serialization and actual serialization.
       (serialize-triple-help (first args) stream)
-      (let ((subject (nth 0 args)) (predicate (nth 1 args)) (object (nth 2 args))
-	    (graph (nth 3 args)) (graph-pkg (find-package 'graph-words)))
+      (let ((subject   (nth 0 args)) 
+            (predicate (nth 1 args))
+            (object    (nth 2 args))
+	    (graph     (nth 3 args)) 
+            ;; (graph-pkg *graph-words*) 
+            (graph-pkg (find-package 'graph-words)))
 	(if (and (symbolp subject) (eq (symbol-package subject) graph-pkg))
 	    (serialize (symbol-name subject) stream)
 	    (serialize subject stream))

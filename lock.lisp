@@ -51,10 +51,10 @@
 
 (defun release-write-lock (rw-lock &key reading-p)
   (sb-thread:with-recursive-lock ((lock-lock rw-lock))
-    (if (next-in-queue? rw-lock sb-thread:*current-thread*)
+    (if (next-in-queue? rw-lock (vg-current-thread))
 	(dequeue (lock-writer-queue rw-lock))
 	(error "Cannot release lock I don't own!"))
-    (if (next-in-queue? rw-lock sb-thread:*current-thread*)
+    (if (next-in-queue? rw-lock (vg-current-thread))
 	;;(format t "Not releasing lock;  recursive ownership detected!~%")
 	nil
 	(progn
@@ -65,22 +65,22 @@
 
 (defun acquire-write-lock (rw-lock &key (max-tries 1000) reading-p)
   (sb-thread:with-recursive-lock ((lock-lock rw-lock))
-    (if (and (next-in-queue? rw-lock sb-thread:*current-thread*)
-	     (eq (lock-writer rw-lock) sb-thread:*current-thread*))
+    (if (and (next-in-queue? rw-lock (vg-current-thread))
+	     (eq (lock-writer rw-lock) (vg-current-thread)))
 	(progn
-	  (enqueue-front (lock-writer-queue rw-lock) sb-thread:*current-thread*)
+	  (enqueue-front (lock-writer-queue rw-lock) (vg-current-thread))
 	  (return-from acquire-write-lock rw-lock))
-	(enqueue (lock-writer-queue rw-lock) sb-thread:*current-thread*)))
+	(enqueue (lock-writer-queue rw-lock) (vg-current-thread))))
   (loop for tries from 0 to max-tries do
-       (if (eq (lock-writer rw-lock) sb-thread:*current-thread*)
+       (if (eq (lock-writer rw-lock) (vg-current-thread))
 	   (return-from acquire-write-lock rw-lock)
 	   (let ((wait-p nil))
 	     (handler-case
 		 (sb-thread:with-recursive-lock ((lock-lock rw-lock))
 		   (if (and (null (lock-writer rw-lock))
-			    (next-in-queue? rw-lock sb-thread:*current-thread*))
+			    (next-in-queue? rw-lock (vg-current-thread)))
 		       (progn
-			 (setf (lock-writer rw-lock) sb-thread:*current-thread*)
+			 (setf (lock-writer rw-lock) (vg-current-thread))
 			 (when reading-p
 			   (decf (lock-readers rw-lock)))
 			 (unless (eql 0 (lock-readers rw-lock))
