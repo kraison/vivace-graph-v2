@@ -257,6 +257,7 @@
                    ;; :NOTE I _really_ hope this `sleep'ing is for
                    ;; thread-interrupts and not just to accomodate 
                    ;; 'uuid:make-v1-uuid' while it bangs on the system clock!...
+                   ;; No... `make-v1-uuid' sleeps for: 0.0001
                    (progn
                      (sleep 0.000000001)
                      (vg-thread-yield-cas-spinlock))
