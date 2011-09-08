@@ -33,6 +33,7 @@
 	       ;; #+sbcl (:file "sb-impl")
 	       ;; #+sbcl (:file "sb-thread")
 	       (:file "hash-table" :depends-on ("vivace-graph-v2-package")) ;;"sb-thread")) 
+               (:file "concurrency-bridge" :depends-on ("vivace-graph-v2-package"))
 	       (:file "gettimeofday" :depends-on ("vivace-graph-v2-package"))
 	       (:file "conditions" :depends-on ("vivace-graph-v2-package"))
 	       (:file "constants" :depends-on ("conditions"))

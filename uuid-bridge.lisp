@@ -54,6 +54,7 @@
            #:uuid-eql
            #:serialize-uuid
            #:make-v1-uuid
+           ;; #:make-v4-uuid
            ))
 
 (in-package #:vg-uuid)
@@ -104,6 +105,10 @@
 (defun make-v1-uuid ()
   "Create a new version one UUID."
   (uuid:make-v1-uuid))
+
+(defun make-v4-uuid ()
+  "Create a new version four UUID."
+  (uuid:make-v4-uuid))
 
 (defun sxhash-uuid (uuid) (sxhash (uuid:print-bytes nil uuid)))
 

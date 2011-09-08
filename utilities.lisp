@@ -5,6 +5,7 @@
 
 (defmacro logger (level msg &rest args)
   "Syslogger"
+  ;; `(osicat-posix:syslog (gethash ',level *syslog-priorities*) ,msg ,@args))
   `(funcall #'sb-posix:syslog (gethash ',level *syslog-priorities*) ,msg ,@args))
 
 (defun ip-to-string (ip)
@@ -69,10 +70,6 @@
 
 (defun make-slot-key (id slot)
   (format nil "~A~A~A" id #\Nul slot))
-
-;; Make compare-and-swap shorter to call
-(defmacro cas (place old new)
-  `(sb-ext:compare-and-swap ,place ,old ,new))
 
 ;; String split without regexes.
 (defun split (string &optional (ws '(#\Space #\Tab)) max)

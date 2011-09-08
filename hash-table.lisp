@@ -91,6 +91,10 @@
   #-sbcl 'boolean ;; what else might we specify here ??? 
   #+sbcl 'sb-thread::spinlock)
 
+;; Make compare-and-swap shorter to call
+(defmacro cas (place old new)
+  `(sb-ext:compare-and-swap ,place ,old ,new))
+
 #-sbcl
 (defun vg-get-spinlock-value (spinlock)
   (declare (ignore spinlock))
@@ -167,7 +171,7 @@
 (defun vg-compare-and-swap-spinlock-value (cas-spinlock cas-old cas-new)
   (declare (vg-spinlock cas-spinlock)
            (optimize (speed 3)))
-  (sb-ext:compare-and-swap (sb-thread::spinlock-value cas-spinlock) cas-old cas-new))
+  (cas (sb-thread::spinlock-value cas-spinlock) cas-old cas-new))
 
 #+sbcl
 (defun vg-get-hash-table-spinlock (hash-table)
