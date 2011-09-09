@@ -113,16 +113,8 @@
 	(triple-persistent? triple))
       (triple-persistent? triple)))
 
-;; :NOTE Our initial naive assumption is that it may be faster to use
-;; `make-v4-uuid' esp. as long as the rest of the system continues using
-;; `vg-uuid:make-v1-uuid', using a v4-uuid we could then check `anonymous?' by
-;; examining if the version 4 bit is set. This said, it would be _much_ cleaner
-;; to eschew v1 uuids completely int the the UUID reliant portions of the
-;; system by using v3 or v5 UUIDs instead.
 (defun make-anonymous-node ()
-  "Create a unique anonymous node.
-:SEE-ALSO `deftemplate'"
-  (format nil "_anon:~A" (vg-uuid:make-v1-uuid)))
+  (format nil "_anon:~A" (vg-uuid::make-v4-uuid)))
 
 ;; If the uuid library were more like Unicly it would do "the right thing" per
 ;; the RFC by case-sensitively printing hex chars of UUID objects in lower
@@ -304,7 +296,7 @@
 	     (when (deleted? triple)
 	       (undelete-triple triple :persistent? persistent?))
 	     triple))
-	 (let ((id (vg-uuid:make-v1-uuid)))  
+	 (let ((id (vg-uuid::make-v4-uuid)))  
 	   (let ((triple (make-triple :subject subject
 				      :predicate predicate
 				      :object object 
@@ -346,7 +338,7 @@
     triple-count))
 
 (defun get-triples (&key s p o (g *graph*) (store *store*))
-  "Returns a cursor to the results."
+
   (flet ((get-them ()
 	   (multiple-value-bind (s p o g) (intern-spog s p o g)
 	     (cond ((and g s p o)
@@ -485,22 +477,21 @@
 (defun load-triples (file)
   (with-open-file (stream file)
     (let ((count 0))
-      (handler-case
-	  (loop
-	     (let ((triple (read stream)))
-	       (%add-triple (nth 0 triple)
-			    (nth 1 triple)
-			    (nth 2 triple)
-			    (uuid:make-uuid-from-string (nth 3 triple))
-			    (nth 4 triple)
-			    (nth 5 triple)
-			    (nth 6 triple))
-	       (incf count)))
+      (handler-case (loop
+                       (let ((triple (read stream)))
+                         (%add-triple (nth 0 triple)
+                                      (nth 1 triple)
+                                      (nth 2 triple)
+                                      (uuid:make-uuid-from-string (nth 3 triple))
+                                      (nth 4 triple)
+                                      (nth 5 triple)
+                                      (nth 6 triple))
+                         (incf count)))
 	(end-of-file (condition)
 	  (declare (ignore condition))
 	  (do-indexing)
 	  (format t "Loaded ~A triples~%" count))
 	(error (condition)
-	  (format t "Error loading triples: ~A / ~A~%" 
+	  (format t "Error loading triples: ~A / ~A~%"
 		  (type-of condition) condition))))))
 

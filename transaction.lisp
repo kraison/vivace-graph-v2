@@ -12,7 +12,6 @@
 	     (:print-function print-transaction)
 	     (:conc-name tx-)
 	     (:predicate transaction?))
-  ;; (id      (vg-uuid:make-v1-uuid))
   (id       (vg-uuid::make-v4-uuid))
   (queue    nil)
   (rollback nil)

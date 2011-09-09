@@ -49,11 +49,11 @@
 
 
 (defpackage #:vg-uuid
-  (:use :common-lisp)
+  (:use #:common-lisp)
   (:export #:uuid?
            #:uuid-eql
            #:serialize-uuid
-           #:make-v1-uuid
+           ;; #:make-v1-uuid
            ;; #:make-v4-uuid
            ))
 
@@ -96,12 +96,6 @@
        for i from 15 downto 10
        do (write-byte (ldb (byte 8 (* 8 (- 15 i))) uuid::node) stream))))
 
-;; :WAS `make-uuid'
-;; :NOTE Our initial naive assumption is that it may be faster to use `make-v4-uuid'. 
-;; There doesn't appear to be a reliance on any the time based aspects of v1 uudis.
-;; This said, it would be _much_ cleaner to eschew v1 uuids completely and the
-;; other uuid reliant portions of the system to use of v3 or v5 UUIDs instead.
-;; :SEE related comments for `make-anonymous-node' in :FILE vivace-graph-v2-FORK/triples.lisp
 (defun make-v1-uuid ()
   "Create a new version one UUID."
   (uuid:make-v1-uuid))
