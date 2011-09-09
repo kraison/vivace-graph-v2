@@ -19,8 +19,10 @@
       (error 'deserialization-error :instance stream :reason condition))))
 
 (defun deserialize-integer (stream)
-  (let ((int 0) (n-bytes (read-byte stream)))
+  (let ((int 0) 
+        (n-bytes (read-byte stream)))
     (dotimes (i n-bytes)
+      ;; (setq int (dpb (read-byte stream) (byte 8 (ash i 3)) int))
       (setq int (dpb (read-byte stream) (byte 8 (* i 8)) int)))
     int))
 
@@ -45,11 +47,41 @@
   (let ((char-code (deserialize-integer stream)))
     (code-char char-code)))
 
+;;; ==============================
+;; :NOTE each of the following test cases pass for Clisp-2.49 and SBCL-1.47
+;; As does form using flexi-streams for both Clisp-2.49 and SBCL-1.47
+;; #+clisp
+;; (let* ((src-string "ḻfḉḲíï<òbG¦>GḜîṉí@B3Áû?ḹ<mþḩú'ÁṒ¬&]Ḏ")
+;;        (compd (salza2:compress-data (ext:convert-string-to-bytes src-string charset:utf-8)
+;;                                     'salza2:zlib-compressor))
+;;        (decompd (chipz:decompress nil 'chipz:zlib compd))
+;;        (reconv  (ext:convert-string-from-bytes decompd charset:utf-8)))
+;;   (list (string= src-string reconv) (cons src-string reconv)))
+;; #+sbcl
+;; (let* ((src-string "ḻfḉḲíï<òbG¦>GḜîṉí@B3Áû?ḹ<mþḩú'ÁṒ¬&]Ḏ")
+;;        (compd (salza2:compress-data (sb-ext:string-to-octets src-string :external-format :utf-8)
+;;                                         'salza2:zlib-compressor))
+;;        (decompd (chipz:decompress nil 'chipz:zlib compd))
+;;        (reconv  (sb-ext:octets-to-string decompd :external-format :utf-8)))
+;;   (list (string= src-string reconv) (cons src-string reconv)))
+;;
+;; #-(sbcl clisp)
+;; (let* ((src-string "ḻfḉḲíï<òbG¦>GḜîṉí@B3Áû?ḹ<mþḩú'ÁṒ¬&]Ḏ")
+;;        (compd (salza2:compress-data (flexi-streams:string-to-octets src-string :external-format :utf-8)
+;;                                     'salza2:zlib-compressor))
+;;        (decompd (chipz:decompress nil 'chipz:zlib compd))
+;;        (reconv  (flexi-streams:octets-to-string decompd :external-format :utf-8)))
+;;   (list (string= src-string reconv) (cons src-string reconv)))
+;;; ==============================
+
 (defmethod deserialize ((code (eql +string+)) stream)
   (let* ((length (deserialize (read-byte stream) stream))
 	 (array (make-array length :element-type '(unsigned-byte 8))))
     (dotimes (i length)
       (setf (aref array i) (read-byte stream)))
+    ;; #+sbcl  (sb-ext:octets-to-string array :external-format :utf-8 :start 0 :end length))
+    ;; #+clisp (ext:convert-string-from-bytes array charset:utf-8 :start 0 :end length)
+    ;; #-(sbcl clisp) (flexi-streams:octets-to-string array  :start 0 :end length :external-format :utf-8)
     (babel:octets-to-string array)))
 
 (defmethod deserialize ((code (eql +compressed-string+)) stream)
@@ -57,6 +89,9 @@
 	 (array (make-array length :element-type '(unsigned-byte 8))))
     (dotimes (i length)
       (setf (aref array i) (read-byte stream)))
+    ;; #+sbcl  (sb-ext:octets-to-string array :external-format :utf-8 :start 0 :end length))
+    ;; #+clisp (ext:convert-string-from-bytes array charset:utf-8 :start 0 :end length)
+    ;; #-(sbcl clisp) (flexi-streams:octets-to-string (chipz:decompress nil 'chipz:zlib array) :external-format :utf-8)
     (babel:octets-to-string (chipz:decompress nil 'chipz:zlib array))))
 
 (defmethod deserialize ((code (eql +t+)) stream)
