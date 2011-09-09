@@ -36,7 +36,7 @@
 
 ;; Built-in type identifiers for serializing
 (defconstant +needs-lookup+        :needs-lookup)
-(defconstant +negative-integer+    #x00)
+(defconstant +negative-integer+    #x01)
 (defconstant +positive-integer+    #x02)
 (defconstant +character+           #x03)
 (defconstant +symbol+              #x04)
