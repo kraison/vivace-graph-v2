@@ -1,6 +1,8 @@
 (defun do-write ()
   (with-open-file (stream "/var/tmp/test" 
-			  :direction :output :if-exists :overwrite :if-does-not-exist :create)
+			  :direction :output 
+                          :if-exists :overwrite 
+                          :if-does-not-exist :create)
     (time
      (dotimes (i 1000)
        (dotimes (j 1000)
