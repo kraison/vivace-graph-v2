@@ -1,7 +1,7 @@
-(in-package #:cl-user)
+;; (in-package #:cl-user)
 
 (defpackage #:vivace-graph-v2
-  (:use #:cl 
+  (:use #:common-lisp
 	#:cffi 
 	#:bordeaux-threads 
 	#:cl-skip-list

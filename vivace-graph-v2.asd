@@ -1,9 +1,10 @@
 ;; ASDF package description for vivace-graph-v2              -*- Lisp -*-
 
-(defpackage :vivace-graph-v2-system (:use :cl :asdf))
-(in-package :vivace-graph-v2-system)
+(defpackage #:vivace-graph-v2-system (:use #:common-lisp #:asdf))
 
-(defsystem vivace-graph-v2
+(in-package #:vivace-graph-v2-system)
+
+(defsystem #:vivace-graph-v2
   :name "Vivace Graph"
   :maintainer "Kevin Raison"
   :author "Kevin Raison <last name @ chatsubo dot net>"
@@ -28,8 +29,8 @@
 	       :py-configparser
 	       :cl-js
 	       :cl-json)
-  :components ((:file "uuid-bridge")
-	       (:file "vivace-graph-v2-package" :depends-on ("uuid-bridge"))
+  :components ((:file "vivace-graph-v2-package"); :depends-on ("uuid-bridge"))
+               (:file "uuid-bridge" :depends-on ("vivace-graph-v2-package"))
 	       ;; #+sbcl (:file "sb-impl")
 	       ;; #+sbcl (:file "sb-thread")
 	       (:file "hash-table" :depends-on ("vivace-graph-v2-package")) ;;"sb-thread")) 
@@ -54,5 +55,5 @@
 	       (:file "prologc" :depends-on ("triples"))
 	       (:file "prolog-functors" :depends-on ("prologc"))
 	       (:file "templates" :depends-on ("prolog-functors"))
-               (:file "vivace-graph-v2-doc-utils")
+               (:file "vivace-graph-v2-doc-utils" :depends-on ("vivace-graph-v2-package"))
                (:file "vivace-graph-v2-docs" :depends-on ("vivace-graph-v2-doc-utils"))))
