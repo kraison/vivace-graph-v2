@@ -4,6 +4,30 @@
 
 (in-package #:vivace-graph-v2)
 
+
+
+;;; ==============================
+;;; vivace-graph-v2/triples.lisp
+;;; ==============================
+
+(fundoc 'make-anonymous-node
+  "Create a unique anonymous node identifier.~%~@
+Return value is a string of the form:~%
+ \"_anon:<UUID>\"~%~@
+:EXAMPLE~%~@
+ { ... <EXAMPLE> ... } ~%~@
+:SEE-ALSO `deftemplate'.~%")
+
+(fundoc 'get-triples
+        "Return a cursor to the result.~%~@
+Keyword G defaults to `*graph*'.~%~@
+Keyword STORE defaults to `*store*'.
+:EXAMPLE~%~@
+ { ... <EXAMPLE> ... } ~%~@
+:SEE-ALSO `<XREF>'.~%")
+
+
+
 
 ;;; ==============================
 ;;; vivace-graph-v2/templates.lisp
