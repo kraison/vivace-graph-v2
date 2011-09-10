@@ -8,9 +8,9 @@
 (defgeneric triple-equal (t1 t2)
   (:method ((t1 triple) (t2 triple)) 
     (and (vg-uuid:uuid-eql (id t1) (id t2))
-	 (equal (triple-subject t1) (triple-subject t2))
+	 (equal (triple-subject t1)   (triple-subject t2))
 	 (equal (triple-predicate t1) (triple-predicate t2))
-	 (equal (triple-object t1) (triple-object t2))))
+	 (equal (triple-object t1)    (triple-object t2))))
   (:method (t1 t2) nil))
 
 (defgeneric triple-equalp (t1 t2)

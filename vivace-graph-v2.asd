@@ -19,16 +19,17 @@
 	       :cl-skip-list
 	       :salza2
 	       :chipz
-	       :hunchentoot
+	       :hunchentoot    ;; not currently in use AFAICT
 	       :uuid
 	       :ieee-floats
 	       :local-time
 	       :date-calc
 	       :parse-number
 	       :split-sequence
-	       :py-configparser
-	       :cl-js
-	       :cl-json)
+	       :py-configparser ;; not currently in use AFAICT
+	       :cl-js           ;; not currently in use AFAICT
+	       :cl-json         ;; not currently in use AFAICT 
+               )
   :components ((:file "vivace-graph-v2-package"); :depends-on ("uuid-bridge"))
                (:file "uuid-bridge" :depends-on ("vivace-graph-v2-package"))
 	       ;; #+sbcl (:file "sb-impl")

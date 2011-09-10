@@ -130,6 +130,8 @@
 (defmethod deserialize ((code (eql +vector+)) stream)
   (deserialize-sequence stream 'vector))
 
+;; (vg-uuid::deserialize-uuid (stream))
+;; (unicly::uuid-from-byte-array (unicly::uuid-deserialize-byte-array-bytes stream))
 (defmethod deserialize ((code (eql +uuid+)) stream)
   (let ((array (make-array 16 :element-type '(unsigned-byte 8))))
     (dotimes (i 16)

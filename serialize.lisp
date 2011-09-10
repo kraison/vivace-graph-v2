@@ -85,6 +85,10 @@
   (write-byte +uuid+ stream)
   (vg-uuid:serialize-uuid uuid stream))
 
+;; (defmethod serialize ((uuid vg-uuid) (stream stream))
+;;   (write-byte +uuid+ stream)
+;;   (vg-uuid:serialize-uuid uuid stream))
+
 (defun serialize-sequence (seq stream code)
   (let ((length (length seq)))
     (write-byte code stream)
