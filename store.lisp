@@ -134,6 +134,7 @@
       (intern-spog subject predicate object graph)
     (let ((lock nil) (pattern (list subject predicate object graph)))
       (logger :info "~A: Locking pattern ~A~%" *current-transaction* pattern)
+      ;; LispWorks hcl:with-hash-table-locked hash-table &body body => results
       (sb-ext:with-locked-hash-table ((locks store))
 	(setq lock 
 	      (or (gethash pattern (locks store))
