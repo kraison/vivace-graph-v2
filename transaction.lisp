@@ -218,6 +218,7 @@
    :name (format nil "tx-log thread for ~A" store)))
 
 (defun release-all-locks (tx)
+  ;; LispWorks hcl:with-hash-table-locked hash-table &body body => results
   (sb-ext:with-locked-hash-table ((locks *store*))
     (dolist (pair (tx-locks tx))
       (destructuring-bind (pattern-or-triple lock kind) pair
