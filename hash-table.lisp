@@ -3,12 +3,12 @@
 
 ;;; ==============================
 ;;
-;; AFAICT It will be difficult to fully abstract away SBCL's spinlocks/mutex with bordeaux-threads 
+;; AFAICT It will be difficult to fully abstract away SBCL's spinlocks/mutex with bordeaux-threads
 ;; bordeaux-threads:release-lock   <-- sb-thread:release-mutex
 ;; (sb-thread::release-spinlock (sb-impl::hash-table-spinlock hash-table))
 ;;
 ;; SBCL's hash-table's are implemented as STRUCTURE-OBJECT with
-;; sb-impl::hash-table-spinlock as one of its slots. 
+;; sb-impl::hash-table-spinlock as one of its slots.
 ;; The spinlock is used for locking cl:gethash/(setf cl:gethash)/cl:remhash and
 ;; looks like this:
 ;;
@@ -16,10 +16,10 @@
 ;;            :type sb-thread::spinlock :read-only t)
 ;;
 ;; IOW, there doesn't appear to be MUTEX.
-;; 
+;;
 ;; In any event, I'm not comfortable understanding how to incorporate
 ;; bordeaux-threads MUTEX frobbing with SBCL's spinlocks... though it appears
-;; that a spinlock not entirely unlike a MUTEX. Following from 
+;; that a spinlock not entirely unlike a MUTEX. Following from
 ;; :FILE sbcl/src/code/thread.lisp
 ;;
 ;; (defstruct spinlock
@@ -40,7 +40,7 @@
 ;;
 ;; (defstruct tt--spinlock
 ;;   "Spinlock type."
-;;   (name  nil 
+;;   (name  nil
 ;;          :type (or null vg-thread-name))
 ;;   (value nil))
 ;;
@@ -97,7 +97,7 @@
   #+sbcl 'sb-thread:thread-name)
 
 (deftype vg-spinlock ()
-  #-sbcl 'boolean ;; what else might we specify here ??? 
+  #-sbcl 'boolean ;; what else might we specify here ???
   #+sbcl 'sb-thread::spinlock)
 
 ;; Make compare-and-swap shorter to call
@@ -109,7 +109,7 @@
   (declare (ignore spinlock))
   (error "not implemented -- what is the equivalent of sb-thread::spinlock-value"))
 
-#-sbcl 
+#-sbcl
 (defun vg-compare-and-swap-spinlock-value (cas-spinlock cas-old cas-new)
   (error "not implemented -- what is the equivalent of sb-ext:compare-and-swap of sb-thread::spinlock-value?"))
 
@@ -126,14 +126,14 @@
 (defun vg-interrupts-not-enabled-check ()
   (error "not implemented -- what is equivalent of (not sb-sys:*interrupts-enabled*)?"))
 
-#-sbcl 
+#-sbcl
 (defun vg-thread-yield-cas-spinlock ()
   ;; :NOTE `bordeaux-threads:thread-yield' wraps `sb-thread:release-foreground'
   ;; whereas `sb-thread:thread-yield' is an alien-routine
   (error "not implemented -- verify that bordeaux-threads:thread-yield ~
          is applicably equivalent with sb-thread:thread-yield in this context"))
 
-#-sbcl 
+#-sbcl
 (defun vg-unix-interrupts-check ()
   (error "not implemented -- what is equivalent of sb-unix::%check-interrupts?"))
 
@@ -225,7 +225,7 @@
   #+sbcl (declare (inline vg-interrupts-not-enabled-check
                           vg-allow-with-interrupts)
                   (optimize (speed 3)))
-  (the boolean 
+  (the boolean
     (and (the boolean (vg-interrupts-not-enabled-check))
          (vg-allow-with-interrupts)
          t)))
