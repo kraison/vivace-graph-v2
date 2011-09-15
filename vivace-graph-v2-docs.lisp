@@ -4,6 +4,33 @@
 
 (in-package #:vivace-graph-v2)
 
+;;; ==============================
+;;;  vivace-graph-v2/utilities.lisp
+;;; ==============================
+
+(fundoc 'symbol-nstring-upcase
+"Normalize SYMBOL-TO-UPCASE to the string representation of its cannonicaly
+upcased symbol-name.~%~@
+If SYMBOL-TO-UPCASE is not of type cl:symbol an error is signaled.~%~@
+:EXAMPLE~%
+ \(symbol-nstring-upcase '|BubBa|\)~%
+ \(symbol-nstring-upcase 'bubba\)~%
+ \(symbol-nstring-upcase \"string-fails-succesfully\"\)~%~@
+:SEE-ALSO `ensure-internable'.~%")
+
+(fundoc 'ensure-internable
+"When THING is of type cl:symbol or cl:string intern it as a canonical upcased symbol.~%~@
+When THING is of type cl:number return THING.~%~@
+When THING is of some other type an error is signaled.~%~@
+:EXAMPLE~%
+ \(ensure-internable 88\)~%
+ \(ensure-internable '|BubBa|\)~%
+ \(ensure-internable 'bubba\)~%
+ \(ensure-internable \"bubba\"\)~%
+ \(ensure-internable \"BubBa\"\)~%~@
+:SEE-ALSO `symbol-nstring-upcase'.~%")
+
+
 
 ;;; ==============================
 ;;; vivace-graph-v2/globals.lisp
