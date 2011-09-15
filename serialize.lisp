@@ -81,7 +81,7 @@
 	 (serialize (symbol-name symbol) stream)
 	 (serialize (package-name (symbol-package symbol)) stream))))
 
-(defmethod serialize ((uuid uuid:uuid) (stream stream))
+(defmethod serialize ((uuid unicly:unique-universal-identifier) (stream stream))
   (write-byte +uuid+ stream)
   (vg-uuid:serialize-uuid uuid stream))
 
