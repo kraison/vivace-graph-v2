@@ -4,6 +4,23 @@
 
 (in-package #:vivace-graph-v2)
 
+
+;;; ==============================
+;;; vivace-graph-v2/globals.lisp
+;;; ==============================
+
+(vardoc '*cont*
+"Continuation container for Prolog step-wise queries.")
+
+(vardoc '*select-list*
+        "Accumulator for Prolog selects.")
+
+(vardoc '*var-counter*
+ "Counter for generating Prolog variable names.")
+
+(vardoc '*functor*
+  "The Prolog functor currently being compiled.")
+
 
 
 ;;; ==============================
@@ -25,6 +42,38 @@ Keyword STORE defaults to `*store*'.
 :EXAMPLE~%~@
  { ... <EXAMPLE> ... } ~%~@
 :SEE-ALSO `<XREF>'.~%")
+
+(fundoc 'print-triple
+"Printer function for instances of the structure triple.
+Print output dependent on value of `*print-triple-details*'.~%")
+
+(fundoc 'triple?
+"Whether object is an instance of the structure triple.~%")
+
+(fundoc 'triple-subject
+ "Return the SPOG subject associated with an INSTANCE of the structure triple.~%")
+
+(fundoc 'triple-predicate
+ "Return the SPOG predicate associated with an INSTANCE of the structure triple.~%")
+
+(fundoc 'triple-object   
+"Return the SPOG object associated with an INSTANCE of the structure triple.~%")
+
+(fundoc 'triple-graph
+"Return the SPOG graph associated with an INSTANCE of the structure triple.~%")
+
+(fundoc 'triple-id 
+"Return the SPOGI id associated with an INSTANCE of the structure triple.~%")
+
+(fundoc 'triple-deleted?
+"Whether INSTANCE of the structure triple is deleted from the triple-store.~%")
+
+(fundoc 'triple-cf
+"Return certainty factor for an INSTANCE of the structure triple.~%")
+
+(fundoc 'triple-persistent?
+"Whether INSTANCE of the structure triple is persitent in the triple-store.~%")
+
 
 
 
