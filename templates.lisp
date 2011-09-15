@@ -69,7 +69,7 @@ It is assumed that STRINGED-NODE-NAME has already processed with `string-downcas
           (eval
            `#'(lambda (&key ,@(mapcar #'second slots))
                 (with-graph-transaction (*store*)
-                  (let ((,node (make-anonymous-node)))
+                  (let ((,node (vg-uuid::make-anonymous-node)))
                     (add-triple ,node "is-a" ,(string-downcase (symbol-name name)))
                     ,@(mapcar 
                        #'(lambda (slot)
