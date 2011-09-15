@@ -1,27 +1,10 @@
 (in-package #:vivace-graph-v2)
 
-
-;; (fundoc 'symbol-nstring-upcase
-;; "Normalize symbol-to-upcase to a cannonicaly upcased symbol.
-;;  :EXAMPLE
-;;   (symbol-nstring-upcase '|BubBa|)
-;;   (symbol-nstring-upcase 'bubba)
-;;   (symbol-nstring-upcase "string-fails-succesfully")
 (defun symbol-nstring-upcase (symbol-to-upcase)
   (declare (symbol symbol-to-upcase))
   #-:sbcl (assert (symbolp "string"))
   (nstring-upcase (string symbol-to-upcase)))
 
-;; (fundoc 'ensure-internable
-;; "When THING is of type cl:symbol or cl:string intern it as a canonical upcased symbol.
-;;  When THING is of type cl:number return THING.
-;;  When THING is of some other type an error is signaled.
-;;  :EXAMPLE
-;;   (ensure-internable 88)
-;;   (ensure-internable '|BubBa|)
-;;   (ensure-internable 'bubba)
-;;   (ensure-internable "bubba")
-;;   (ensure-internable "BubBa")")
 (defun ensure-internable (thing)
   (etypecase thing
     (symbol 
