@@ -158,6 +158,7 @@
   (multiple-value-bind (subject predicate object graph) 
       (intern-spog subject predicate object graph)
     (let ((pattern (list subject predicate object graph)))
+      ;; LispWorks hcl:with-hash-table-locked hash-table &body body => results
       (sb-ext:with-locked-hash-table ((locks store))
 	(let ((lock (gethash pattern (locks store))))
 	  (when (rw-lock? lock)

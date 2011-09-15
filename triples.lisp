@@ -113,9 +113,6 @@
 	(triple-persistent? triple))
       (triple-persistent? triple)))
 
-(defun make-anonymous-node ()
-  (format nil "_anon:~A" (vg-uuid::make-v4-uuid)))
-
 ;; If the uuid library were more like Unicly it would do "the right thing" per
 ;; the RFC by case-sensitively printing hex chars of UUID objects in lower
 ;; case...  There is a minor performance optimization to be had by avoiding
@@ -143,9 +140,6 @@
 	
 (defun unindex-predicate (name-string)
   (setf (gethash name-string (indexed-predicates *store*)) nil))
-
-(defmethod make-anonymous-node-name ((uuid uuid:uuid))
-  (format nil "_anon:~A" uuid))
 
 (defun set-triple-cf (triple new-value)
   (with-graph-transaction (*store*)
@@ -481,7 +475,7 @@
                          (%add-triple (nth 0 triple)
                                       (nth 1 triple)
                                       (nth 2 triple)
-                                      (uuid:make-uuid-from-string (nth 3 triple))
+                                      (vg-uuid::uuid-from-string (nth 3 triple))
                                       (nth 4 triple)
                                       (nth 5 triple)
                                       (nth 6 triple))

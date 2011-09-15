@@ -53,39 +53,22 @@
   (:export #:uuid?
            #:uuid-eql
            #:serialize-uuid
+           ;; #:uuid-from-string
            ;; #:make-v1-uuid
            ;; #:make-v4-uuid
            ))
 
 (in-package #:vg-uuid)
 
-
 (defgeneric uuid? (thing)
-  (:method ((thing uuid:uuid)) t) ;; unicly:unique-universal-identifier
-  (:method (thing) nil)
+  ;; :NOTE unicly:unique-universal-identifier-p does the same with some
+  ;; provision for indicating if a uuid-bit-vector-128 is potentially
+  ;; coerce-able to a uuid
+  ;; (:method ((thing vg-uuid)) t) ;; 
+  ;; (:method (thing)     nil)
+  (:method ((thing t)) 
+    (unicly:unique-universal-identifier-p thing))
   (:documentation "UUID type predicate."))
-
-
-;; (defgeneric uuid? (thing)
-;;   ;; :NOTE unicly:unique-universal-identifier-p does the same with some
-;;   ;; provision for indicating if a uuid-bit-vector-128 is potentially
-;;   ;; coerce-able to a uuid
-;;   (:method ((thing vg-uuid)) t) ;; unicly:unique-universal-identifier
-;;   (:method (thing) nil)
-;;   (:documentation "UUID type predicate."))
-
-;; (defgeneric uuid-eql (uuid1 uuid2)
-;;   (:method ((uuid1 vg-uuid) (uuid2 vg-uuid))
-;;     (unicly:uuid-eql uuid1 uuid1))
-;;   (:method ((uuid1 vg-uuid) uuid2)
-;;     nil)
-;;   (:method (uuid1 (uuid2 vg-uuid))
-;;     nil)
-;;   (:documentation "Equality check for UUIDs."))
-
-;; (defclass vg-uuid (unicly:unique-universal-identifier)
-;;   ())
-
 
 ;; prolog-equal -- safe 
 ;; triple-eql      -- should be safe 
@@ -95,88 +78,68 @@
 ;; make-fresh-store --> (make-skip-list :key-equal 'equalp :value-equal 'vg-uuid:uuid-eql :duplicates-allowed? t)
 ;; we should prob. subclass unicly:unique-universal-identifier before using these.
 (defgeneric uuid-eql (uuid1 uuid2)
-  (:method ((uuid1 uuid:uuid) (uuid2 uuid:uuid))
-    (equalp (uuid:uuid-to-byte-array uuid1) (uuid:uuid-to-byte-array uuid2)))
-  (:method ((uuid1 uuid:uuid) uuid2)
+  (:method ((uuid1 vg-uuid) (uuid2 vg-uuid))
+    (unicly:uuid-eql uuid1 uuid1))
+  (:method ((uuid1 vg-uuid) uuid2)
     nil)
-  (:method (uuid1 (uuid2 uuid:uuid))
+  (:method (uuid1 (uuid2 vg-uuid))
     nil)
   (:documentation "Equality check for UUIDs."))
 
-;; make-anonymous-node-name specialzed on uuid:uuid
+;; (defclass vg-uuid (unicly:unique-universal-identifier)
+;;   ())
 
-;; load-triples     -- evaluates uuid:make-uuid-from-string
-;; %set-triple-cf   -- evaluates uuid:make-uuid-from-string and vg-uuid:uuid?
-;; %undelete-triple -- evaluates uuid:make-uuid-from-string and vg-uuid:uuid?
-;; %delete-triple   -- evaluates uuid:make-uuid-from-string and vg-uuid:uuid?
 
+
+;; load-triples     -- evaluates uuid:make-uuid-from-string #UPDATED
+;; %set-triple-cf   -- evaluates uuid:make-uuid-from-string and vg-uuid:uuid? #UPDATED
+;; %undelete-triple -- evaluates uuid:make-uuid-from-string and vg-uuid:uuid? #UPDATED
+;; %delete-triple   -- evaluates uuid:make-uuid-from-string and vg-uuid:uuid? #UPDATED
+
+(defun uuid-from-string (string)
+  (unicly:make-uuid-from-string string))
 
 ;; lookup-triple    -- evaluates vg-uuid:uuid?
 ;; add-triple       -- evaluates vg-uuid::make-v4-uuid
 
-;; (defun serialize-uuid (uuid stream)
-;;  ;; uuid-serialize-bit-vector-bits
-;;   (uuid-serialize-byte-array-bytes uuid stream))
-
-;; serialize -- specializes on uuid:uuid and vg-uuid:serialize-uuid
+;; serialize -- specializes on unicly:unique-universal-identifier and vg-uuid:serialize-uuid #UPDATED
 (defun serialize-uuid (uuid stream)
-  (with-slots (uuid::time-low 
-               uuid::time-mid
-               uuid::time-high-and-version 
-               uuid::clock-seq-and-reserved
-               uuid::clock-seq-low 
-               uuid::node)
-      uuid
-    (loop 
-       for i from 3 downto 0
-       do (write-byte (ldb (byte 8 (* 8 i)) uuid::time-low) stream))
-    (loop 
-       for i from 5 downto 4
-       do (write-byte (ldb (byte 8 (* 8 (- 5 i))) uuid::time-mid) stream))
-    (loop 
-       for i from 7 downto 6
-       do (write-byte (ldb (byte 8 (* 8 (- 7 i))) uuid::time-high-and-version) stream))
-    (write-byte (ldb (byte 8 0) uuid::clock-seq-and-reserved) stream)
-    (write-byte (ldb (byte 8 0) uuid::clock-seq-low) stream)
-    (loop 
-       for i from 15 downto 10
-       do (write-byte (ldb (byte 8 (* 8 (- 15 i))) uuid::node) stream))))
+  ;; uuid-serialize-bit-vector-bits
+  (unicly::uuid-serialize-byte-array-bytes uuid stream))
+
+(defun deserialize-uuid  (stream-in)
+  (unicly::uuid-from-byte-array
+   (unicly::uuid-deserialize-byte-array-bytes  stream-in)))
 
 ;; :SEE deserialize method specialzed on +uuid+in vivace-graph-v2/deserialize.lisp
 ;; (defun deserialize-uuid (stream)
 ;;   (unicly::uuid-from-byte-array (unicly::uuid-deserialize-byte-array-bytes stream)))
 
-(defun make-v1-uuid ()
-  "Create a new version one UUID."
-  (uuid:make-v1-uuid))
-
-
-
 ;; make-v4-uuid is used as the id slot of a transaction
 (defun make-v4-uuid ()
   "Create a new version four UUID."
-  (uuid:make-v4-uuid))
+  (unicly:make-v4-uuid))
 
-;; (defun make-v4-uuid ()
-;;   "Create a new version four UUID."
-;;   (unicly:make-v4-uuid))
+;; deftemplate #UPDATED
+(defun make-anonymous-node ()
+  (format nil "_anon:~A" (vg-uuid::make-v4-uuid)))
 
-(defun sxhash-uuid (uuid) 
-  (sxhash (uuid:print-bytes nil uuid)))
+;; This method appears to be unused.
+(defmethod make-anonymous-node-name ((uuid unicly:unique-universal-identifier))
+  (format nil "_anon:~A" uuid))
 
 ;; (defun sxhash-uuid (uuid)
 ;;   (unicly:sxhash-uuid uuid))
 
-(sb-ext:define-hash-table-test vg-uuid:uuid-eql sxhash-uuid)
+;; (sb-ext:define-hash-table-test vg-uuid:uuid-eql sxhash-uuid)
 
-;; make-fresh-store
-(defun make-uuid-table (&key synchronized) 
-  (make-hash-table :test 'vg-uuid:uuid-eql :synchronized synchronized))
-
-;; (defun make-uuid-table (&key synchronized) 
-;;   (unicly:make-hash-table-uuid :synchronized synchronized))
-
-
+;; make-fresh-store #UPDATED
+(defun make-uuid-table (&key size rehash-size rehash-threshold weakness synchronized) 
+  (unicly:make-hash-table-uuid :size             size
+                               :rehash-size      rehash-size 
+                               :rehash-threshold rehash-threshold
+                               :weakness         weakness
+                               :synchronized     synchronized))
 
 ;;; ==============================
 ;;; ==============================
