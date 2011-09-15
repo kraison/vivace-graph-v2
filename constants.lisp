@@ -12,6 +12,9 @@
 (defconstant +cf-false+  -1.0)
 (defconstant +cf-unknown+ 0.0)
 
+;; :NOTE Changed radix of following constants/variables to hex just in case
+;; someone has an insane value for `cl:*read-base*'
+
 ;; Shortened slot identifiers for slot keys
 (defparameter +predicate-slot+     #x00)
 (defparameter +subject-slot+       #x01)
