@@ -398,21 +398,21 @@
 (defun %set-triple-cf (id cf)
   (let ((triple (get-triple-by-id (if (vg-uuid:uuid? id) 
 				      id 
-				      (uuid:make-uuid-from-string id)))))
+				      (vg-uuid::uuid-from-string id)))))
     (when (triple? triple)
       (cas (triple-cf triple) (triple-cf triple) cf))))
 
 (defun %undelete-triple (id)
   (let ((triple (get-triple-by-id (if (vg-uuid:uuid? id) 
 				      id 
-				      (uuid:make-uuid-from-string id)))))
+				      (vg-uuid::uuid-from-string id)))))
     (when (triple? triple)
       (cas (triple-deleted? triple) (triple-deleted? triple) nil))))
 
 (defun %delete-triple (id timestamp)
   (let ((triple (get-triple-by-id (if (vg-uuid:uuid? id) 
 				      id 
-				      (uuid:make-uuid-from-string id)))))
+				      (vg-uuid::uuid-from-string id)))))
     (when (triple? triple)
       (cas (triple-deleted? triple) (triple-deleted? triple) timestamp))))
 
