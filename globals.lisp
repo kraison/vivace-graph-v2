@@ -47,12 +47,19 @@
 
 ;; Prolog specials
 (defparameter *occurs-check* t)
-(defvar *trail* (make-array 200 :fill-pointer 0 :adjustable t))
-(defvar *var-counter* 0 "Counter for generating Prolog variable names.")
-(defvar *functor* nil "The Prolog functor currently being compiled.")
-(defvar *select-list* nil "Accumulator for Prolog selects.")
-(defvar *cont* nil "Continuation container for Prolog step-wise queries.")
-(defvar *prolog-global-functors* (make-hash-table :synchronized t))
-(defvar *user-functors* (make-hash-table :synchronized t :test 'eql))
+
 (defparameter *prolog-trace* nil)
 
+(defvar *trail* (make-array 200 :fill-pointer 0 :adjustable t))
+
+(defvar *var-counter* 0)
+
+(defvar *select-list* nil )
+
+(defvar *cont* nil )
+
+(defvar *functor* nil)
+
+(defvar *prolog-global-functors* (make-hash-table :synchronized t))
+
+(defvar *user-functors*          (make-hash-table :synchronized t :test 'eql))
