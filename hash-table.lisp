@@ -61,6 +61,15 @@
 ;; ;=> #S(TT--SPINLOCK :NAME "my lock" :VALUE 42)
 ;;
 ;;; ==============================
+;;
+;; :NOTE Following are LispWorks low level atomic operations defined in the package "SYSTEM":
+;;  `system:atomic-push', `system:atomic-pop', `system:atomic-fixnum-incf',
+;;  `system:atomic-fixnum-decf', `system:atomic-incf', `system:atomic-decf',
+;;  `system:atomic-exchange', `system:compare-and-swap',
+;;  `system:define-atomic-modify-macro', `system:setup-atomic-funcall',
+;;  `system:low-level-atomic-place-p',
+;;
+;;; ==============================
 
 
 (in-package #:vivace-graph-v2)
