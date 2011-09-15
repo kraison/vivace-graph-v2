@@ -158,19 +158,19 @@
 ;;
 ;; The only way I can see to make vg-get-spinlock-value work as a half viable
 ;; abstraction is to cons up a list or simple-vector for return value of
-;; `sb-thread::spinlock-value' e.g.: 
+;; `sb-thread::spinlock-value' e.g.:
 ;; (list (sb-thread::spinlock-value spinlock))
 ;; In which case we might as well not bother using `sb-ext:compare-and-swap'...
-;; 
+;;
 ;; (defun vg-get-spinlock-value (spinlock)
 ;;   #+sbcl (declare (sb-thread::spinlock spinlock)
 ;;                   (optimize (speed 3) (safety 1)))
 ;;   #-sbcl (error "not implemented -- what is the equivalent of sb-thread::spinlock-value")
 ;;   #+sbcl (if (sb-thread::spinlock-p spinlock)
-;;              (list (sb-thread::spinlock-value spinlock))  
+;;              (list (sb-thread::spinlock-value spinlock))
 ;;              (error "Arg SPINLOCK not `sb-thread::spinlock-p'")))
 ;;
-#+sbcl 
+#+sbcl
 (defun vg-get-spinlock-value (spinlock)
   (declare (vg-spinlock spinlock)
            (optimize (speed 3)))
