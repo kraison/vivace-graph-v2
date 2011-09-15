@@ -144,7 +144,6 @@
 (defun unindex-predicate (name-string)
   (setf (gethash name-string (indexed-predicates *store*)) nil))
 
-;; This method appears to be unused.
 (defmethod make-anonymous-node-name ((uuid uuid:uuid))
   (format nil "_anon:~A" uuid))
 
