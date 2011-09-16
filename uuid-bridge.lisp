@@ -89,13 +89,10 @@
 ;; (defclass vg-uuid (unicly:unique-universal-identifier)
 ;;   ())
 
-
-
 ;; load-triples     -- evaluates uuid:make-uuid-from-string #UPDATED
 ;; %set-triple-cf   -- evaluates uuid:make-uuid-from-string and vg-uuid:uuid? #UPDATED
 ;; %undelete-triple -- evaluates uuid:make-uuid-from-string and vg-uuid:uuid? #UPDATED
 ;; %delete-triple   -- evaluates uuid:make-uuid-from-string and vg-uuid:uuid? #UPDATED
-
 (defun uuid-from-string (string)
   (unicly:make-uuid-from-string string))
 
@@ -114,6 +111,39 @@
 ;; :SEE deserialize method specialzed on +uuid+in vivace-graph-v2/deserialize.lisp
 ;; (defun deserialize-uuid (stream)
 ;;   (unicly::uuid-from-byte-array (unicly::uuid-deserialize-byte-array-bytes stream)))
+
+(defclass indexable-v5-uuid (unicly:unique-universal-identifier)
+  ((bit-vector 
+    :reader bit-vector-of-uuid)
+   (integer-128
+    :reader integer-128-of-uuid)))
+
+;; define the function `make-v5-uuid-indexable'
+;; (make-v5-uuid-indexable *uuid-namespace-dns* "bubba")
+(unicly::def-make-v5-uuid-extended indexable indexable-v5-uuid)
+
+(defmethod update-instance-for-different-class  ((old unicly:unique-universal-identifier)
+                                                 (new uuid-indexable-v5)
+                                                 &key)
+  (with-slots '(%uuid_time-low
+                %uuid_time-mid
+                %uuid_time-high-and-version 
+                %uuid_clock-seq-and-reserved
+                %uuid_clock-seq-low 
+                %uuid_node)
+      old
+    (setf (slot-value new '%uuid_time-low) old
+          (slot-value new '%uuid_time-mid) old
+          (slot-value new '%uuid_time-high-and-version) old
+          (slot-value new '%uuid_clock-seq-and-reserved) old
+          (slot-value new '%uuid_clock-seq-low) old
+          (slot-value new '%uuid_node) old
+          (slot-value new 'bit-vector) (unicly:uuid-to-bit-vector old)
+          (slot-value new 'integer-128)
+          (unicly::uuid-bit-vector-to-integer (slot-value new 'bit-vector)))))
+
+(defun make-v5-uuid (namespace uuid)
+  (make-v5-uuid-indexable namespace uuid))
 
 ;; make-v4-uuid is used as the id slot of a transaction
 (defun make-v4-uuid ()
@@ -141,7 +171,10 @@
                                :weakness         weakness
                                :synchronized     synchronized))
 
-;;; ==============================
+
+
+
+
 ;;; ==============================
 ;; (defun uuid-to-byte-array (uuid &optional (type-specifier nil))
 ;;   "Converts an uuid to byte-array"
