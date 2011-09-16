@@ -72,6 +72,7 @@
 
 (defun hash-table-keys (ht)
   (let ((keys nil))
+    ;; LispWorks hcl:with-hash-table-locked hash-table &body body => results
     (sb-ext:with-locked-hash-table (ht)
       (maphash #'(lambda (k v) (declare (ignore v)) (push k keys)) ht))
     keys))
@@ -79,6 +80,7 @@
 (defun fetch-all-leaves (ht)
   (let ((leaves (make-array 0 :adjustable t :fill-pointer t)))
     (labels ((fetch-all (ht1)
+               ;; LispWorks hcl:with-hash-table-locked hash-table &body body => results
 	       (sb-ext:with-locked-hash-table (ht)
 		 (maphash #'(lambda (k v)
 			      (declare (ignore k))
@@ -98,6 +100,7 @@
   (let ((vals nil))
     (labels ((descend (ht keys)
 	       (if (eq (first keys) '*)
+                   ;; LispWorks hcl:with-hash-table-locked hash-table &body body => results
 		   (sb-ext:with-locked-hash-table (ht)
 		     (maphash #'(lambda (k v) 
 				  (declare (ignore k)) 
@@ -108,6 +111,7 @@
 			   (if (null (rest keys))
 			       (progn
 				 (when return-values?
+                                   ;; LispWorks hcl:with-hash-table-locked hash-table &body body => results
 				   (sb-ext:with-locked-hash-table (value)
 				     (maphash #'(lambda (k v) 
 						  (declare (ignore k)) 
@@ -122,6 +126,7 @@
 (defun descend-ht (ht keys)
   (assert (not (null keys)) nil "keys must be non-null.")
   (if (eq (first keys) '*)
+      ;; LispWorks hcl:with-hash-table-locked hash-table &body body => results
       (sb-ext:with-locked-hash-table (ht)
 	(maphash #'(lambda (k v) 
 		     (declare (ignore k)) 
@@ -149,6 +154,7 @@
 
 (defun find-or-create-ht (ht keys create-fn &optional (d 0))
   (assert (not (null keys)) nil "keys must be non-null.")
+  ;; LispWorks hcl:with-hash-table-locked hash-table &body body => results
   (sb-ext:with-locked-hash-table (ht)
     (multiple-value-bind (value found?) (gethash (first keys) ht)
       (unless (and found? (typep value 'hash-table))
@@ -195,9 +201,11 @@
       (with-gensyms (sub-idx last-key)
 	`(multiple-value-bind (,sub-idx ,last-key) 
 	     (get-table-to-lock ,idx ,@keys)
+           ;; LispWorks hcl:with-hash-table-locked hash-table &body body => results
 	   (sb-ext:with-locked-hash-table (,sub-idx)
 	     ;;(format t "Locked ht ~A / ~A~%" ,last-key ,sub-idx)
 	     ,@body)))
+      ;; LispWorks hcl:with-hash-table-locked hash-table &body body => results
       `(sb-ext:with-locked-hash-table ((index-table ,idx))
 	 ,@body)))
 

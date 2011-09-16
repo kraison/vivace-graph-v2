@@ -1,4 +1,4 @@
-(in-package #:vivace-graph)
+(in-package #:vivace-graph-v2)
 
 (defconstant +wildcard+ '*)
 (defparameter *conclusion-operators* '(assert trigger))
@@ -10,11 +10,21 @@
 
 (defstruct (rule (:print-function print-rule)
 		 (:predicate rule?))
-  name premises conclusions cf (lock (make-recursive-lock)) fn)
+  name
+  premises
+  conclusions
+  cf
+  ;; :NOTE I don't find where rule-lock is used in current file
+  (lock (bt:make-recursive-lock)) 
+  fn)
 
 (defstruct (rule-execution (:predicate rule-execution?)
 			   (:conc-name re-))
-  rule substitution-list triple timestamp)
+  rule               ;; re-rule
+  substitution-list  ;; re-substitution-list
+  triple             ;; re-triple
+  timestamp          ;; re-timestamp
+  )
 
 (defgeneric compile-rule (rule))
 (defgeneric index-rule (rule))
@@ -39,10 +49,10 @@
   "Decode a rule."
   (declare (optimize (speed 3)))
   (destructuring-bind (name premises conclusions cf) (extract-all-subseqs bytes)
-    (let ((rule (make-rule :name (deserialize name)
-			   :premises (deserialize premises)
+    (let ((rule (make-rule :name        (deserialize name)
+			   :premises    (deserialize premises)
 			   :conclusions (deserialize conclusions)
-			   :cf (deserialize cf))))
+			   :cf          (deserialize cf))))
       (cache-rule rule))))
 
 (defmethod serialize ((rule rule))
@@ -77,6 +87,135 @@
     (map-premises #'(lambda (p1) (declare (ignore p1)) (incf count)) p)
     count))
 
+;;; ==============================
+;; 
+;; :NOTE Not sure what scope/extent issues around *graph* but the idea with
+;; removing direct evaluation of (rule-idx *graph*) from call chain means we
+;; only need to add locking wrappers to the body of `%rule-idx-graph' should
+;; they be required.
+;; (declaim (inline %rule-idx-graph))
+;; (defun %rule-idx-graph ()
+;;   (rule-idx *graph*))
+;;
+;; (declaim (inline %map-rule-premises-tree))
+;; (defun %map-rule-premises-tree (map-fun using-rule)
+;;   (map-premises map-fun (copy-tree (rule-premises using-rule))))
+;;
+;; :NOTE Following is a variation of the method `deindex-rule' which: 
+;;   - Uses flet'd function `%push-new-rule' instead of anonymous function.
+;; (defmethod index-rule ((rule rule))
+;;   (declare (inline %map-rule-premises-tree %rule-idx-graph))
+;;   (flet ((%push-new-rule (premis-for-pushing)
+;;            (pushnew rule (gethash (make-premise-idx premis-for-pushing) (%rule-idx-graph)))))
+;;     (%map-rule-premises-tree #'%push-new-rule rule)))
+;;
+;; :NOTE Following is a variation of the method `deindex-rule' which:
+;;  - Uses flet'd function `%remove-rule-hashed-premise' instead of anonymous
+;; (defmethod deindex-rule ((rule rule))
+;;   (declare (inline %rule-idx-graph %map-rule-premises-tree))
+;;   (flet ((%remove-rule-hashed-premise (premise-to-frob)
+;;            (setf (gethash (make-premise-idx premise-to-frob) (%rule-idx-graph))
+;;                  (remove rule (gethash (make-premise-idx premise-to-frob) (%rule-idx-graph))))))
+;;     (%map-rule-premises-tree #'%remove-rule-hashed-premise rule)))
+;;
+;;
+;; :NOTE The method `compile-rule' is not altered; kept here for continuity.
+;; (defmethod compile-rule ((rule rule))
+;;   rule)
+;;
+;; :NOTE Following is a variation of the method `do-rule-substitution' which:
+;;  - Uses accessors triple-<FOO> on the structure triple 
+;;  - Uses cl:when instead of cl:if b/c else branch of cl:if never happened
+;;  - Uses flet'd fncns `get-equal-variables' and `make-counted-rule-execution'
+;;    for the mapping functions `map-premises' and `cl:mapcar'.
+;; (defmethod do-rule-substitution ((rule rule) (wme triple))
+;;   (let ((result nil) 
+;;         (count 0))
+;;     (flet ((%get-prolog-equals (prolog-thing)
+;;              (when (or 
+;;                     (prolog-equal (nth 0 p) (triple-predicate wme))
+;;                     (prolog-equal (nth 1 p) (triple-subject   wme))
+;;                     (prolog-equal (nth 2 p) (triple-object    wme)))
+;;                (let ((r nil))
+;;                  (when (variable-p (nth 0 p))
+;;                    (push `(= ,(nth 0 p) ,(triple-predicate wme)) r))
+;;                  (when (variable-p (nth 1 p)) 
+;;                    (push `(= ,(nth 1 p) ,(triple-subject wme)) r))
+;;                  (when (variable-p (nth 2 p)) 
+;;                    (push `(= ,(nth 2 p) ,(triple-object wme)) r))
+;;                  (when r
+;;                    (pushnew r result :test 'equal)))))
+;;            (%make-counted-rule-execution (rule-to-execute)
+;;              (incf count)
+;;              (make-rule-execution 
+;;               :rule rule 
+;;               :substitution-list r 
+;;               :triple wme 
+;;               :timestamp (triple-timestamp wme))))
+;;       (map-premises #'%get-prolog-equals (copy-tree (rule-premises rule)))
+;;       (mapcar #'%make-counted-rule-execution result))))
+;;
+;; :NOTE Following is a variant of the method `match-rules' which:
+;;   - Uses inlined functions `%map-sorted-rules' and `%nconcinc-hashed-triple-wme'
+;;     instead of cl:mapcar and anonymous functions.
+;;   - Funcion `%nconcinc-hashed-triple-wme' accessors for triple-<FOO> on the
+;;     structure triple I'm not sure if this is correct or not but if it doesn't
+;;     break anything I find using the accessors more explicit...
+;;
+;; (declaim (inline %map-sorted-rules))
+;; (defun %map-sorted-rules (rules wme)
+;;   (flet ((count-rule-premises (rule-to-count)
+;;            (count-premises (rule-premises rule-to-count)))
+;;          (substituting-rules (rule)
+;;            (do-rule-substitution (rule wme))))
+;;     (mapcar #'substituting-rules
+;;             (sort (remove-duplicates rule) #'> :key #'count-rule-premises))))
+;;
+;; (declaim (inline %nconcinc-hashed-triple-wme))
+;; (defun %nconcing-hashed-triple-wme (wme-to-gather)
+;;   (declaim (inline %rule-idx-graph))
+;;   (let ((r nil))
+;;     (labels ((%get-triple-pattern (pattern-to-get)
+;;                (gethash pattern-to-get (%rule-idx-graph)))
+;;              (%nconcing-pattern (pattern)
+;;                (setq r (nconc (%get-triple-pattern pattern))))
+;;              (%map-nconcing-patterns (patterns)
+;;                (map 'nil #'%nconcing-pattern patterns)))
+;;       (%map-nconcing-patterns
+;;        (list (list (triple-predicate wme-to-gather) 
+;;                    (triple-subject   wme-to-gather)
+;;                    (triple-object    wme-to-gather))
+;;              (list (triple-predicate wme-to-gather)
+;;                    (triple-subject   wme-to-gather)
+;;                    +wildcard+)
+;;              (list (triple-predicate wme-to-gather) 
+;;                    +wildcard+ 
+;;                    (triple-object    wme-to-gather))
+;;              (list (triple-predicate wme-to-gather)
+;;                    +wildcard+
+;;                    +wildcard+)
+;;              (list +wildcard+ 
+;;                    (triple-subject   wme-to-gather)
+;;                    (triple-object    wme-to-gather))
+;;              (list +wildcard+ 
+;;                    (triple-subject   wme-to-gather)
+;;                    +wildcard+)
+;;              (list +wildcard+ 
+;;                    +wildcard+
+;;                    (triple-object    wme-to-gather))
+;;              (list +wildcard+
+;;                    +wildcard+
+;;                    +wildcard+))))
+;;     r))
+;;
+;; (defmethod match-rules ((wme triple))
+;;   (declare (inline %nconcing-hashed-triple-wme %map-sorted-rules))
+;;   (%map-sorted-rules (%nconcing-hashed-triple-wme wme)))
+;;
+;;; ==============================
+
+
+
 (defmethod index-rule ((rule rule))
   (map-premises #'(lambda (p) 
 		    (pushnew rule (gethash (make-premise-idx p) (rule-idx *graph*))))
@@ -94,9 +233,10 @@
 (defmethod do-rule-substitution ((rule rule) (wme triple))
   (let ((result nil) (count 0))
     (map-premises #'(lambda (p)
-		      (when (or (prolog-equal (nth 0 p) (predicate wme))
-				(prolog-equal (nth 1 p) (subject wme))
-				(prolog-equal (nth 2 p) (object wme)))
+		      (when (or 
+                             (prolog-equal (nth 0 p) (predicate wme))
+                             (prolog-equal (nth 1 p) (subject wme))
+                             (prolog-equal (nth 2 p) (object wme)))
 			(let ((r nil))
 			  (if (variable-p (nth 0 p))
 			      (push `(= ,(nth 0 p) ,(predicate wme)) r))
@@ -136,18 +276,18 @@
       (loop 
 	 for triple = (second (delete-min (production-pq *graph*)))
 	 while (triple? triple) do
-	   (format t "Matching triple ~A~%" triple)
-	   (dolist (l (match-rules triple))
-	     (dolist (e l)
-	       (format t "Got execution plan ~A~%" e)
-	       (if (not (member (re-triple e) 
-				(gethash (rule-name (re-rule e)) triggered-rules)
-				:test 'triple-eql))
-		   (progn
-		     ;; FIXME: execute and add if execution is successful.
-		     ;; FIXME: if bindings for triple are different, allow it to exec again?
-		     (push (re-triple e) (gethash (rule-name (re-rule e)) triggered-rules))
-		     (format t "Got rule execution ~A~%" (rule-name (re-rule e)))))))))))
+         (format t "Matching triple ~A~%" triple)
+         (dolist (l (match-rules triple))
+           (dolist (e l)
+             (format t "Got execution plan ~A~%" e)
+             (if (not (member (re-triple e) 
+                              (gethash (rule-name (re-rule e)) triggered-rules)
+                              :test 'triple-eql))
+                 (progn
+                   ;; FIXME: execute and add if execution is successful.
+                   ;; FIXME: if bindings for triple are different, allow it to exec again?
+                   (push (re-triple e) (gethash (rule-name (re-rule e)) triggered-rules))
+                   (format t "Got rule execution ~A~%" (rule-name (re-rule e)))))))))))
 
 (defmethod save-rule ((rule rule))
   (store-object (rule-db *graph*) (make-serialized-key rule) (serialize rule))
@@ -173,6 +313,7 @@
 (defun retract-rule (name)
   (let ((rule (get-rule name)))
     (if (rule? rule)
+        ;; LispWorks hcl:with-hash-table-locked hash-table &body body => results        
 	(sb-ext:with-locked-hash-table ((rule-cache *graph*))
 	  ;; FIXME: delete all facts derived by this rule!
 	  (remhash (rule-name rule) (rule-cache *graph*))
@@ -182,10 +323,12 @@
 
 (defmacro defrule (name &body body)
   (assert (eq (first body) 'if))
-  (let* ((name (or (and (symbolp name) (intern (string-upcase (symbol-name name))))
-		   (and (stringp name) (intern (string-upcase name)))
-		   (and (numberp name) name)
-		   (error "Rule name must be a string, symbol or integer, not ~A" (type-of name))))
+  (let* (;; (name (or 
+         ;;        (and (symbolp name) (intern (string-upcase (symbol-name name))))
+         ;;        (and (stringp name) (intern (string-upcase name)))
+         ;;        (and (numberp name) name)
+         ;;        (error "Rule name must be a string, symbol or integer, not ~A" (type-of name))))
+         (name (ensure-internable name))
 	 (then-part (member 'then body))
 	 (premises (ldiff (rest body) then-part))
 	 (conclusions (rest then-part)))
@@ -199,14 +342,16 @@
 
 (defmacro def-fuzzy-rule (name &body body)
   (assert (eq (first body) 'if))
-  (let* ((name (or (and (symbolp name) (intern (string-upcase (symbol-name name))))
-		   (and (stringp name) (intern (string-upcase name)))
-		   (and (numberp name) name)
-		   (error "Rule name must be a string, symbol or integer, not ~A" (type-of name))))
-	 (then-part (member 'then body))
-	 (premises (ldiff (rest body) then-part))
+  (let* (;; (name (or (and (symbolp name) (intern (string-upcase (symbol-name name))))
+         ;;           (and (stringp name) (intern (string-upcase name)))
+         ;;           (and (numberp name) name)
+         ;;           (error "Rule name must be a string, symbol or integer, not ~A" (type-of name))))
+         (name        (ensure-internable name))
+	 (then-part   (member 'then body))
+	 (premises    (ldiff (rest body) then-part))
 	 (conclusions (rest2 then-part))
-	 (cf (second then-part)))
+         ;; :NOTE cf is a really overloaded symbol. Are we captruing here?
+	 (cf          (second then-part)))
     (if (rule? (get-rule name)) (error "A rule named ~A already exists." name))
     (check-conditions name premises 'premise)
     (check-conditions name conclusions 'conclusion)

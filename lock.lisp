@@ -51,10 +51,10 @@
 
 (defun release-write-lock (rw-lock &key reading-p)
   (sb-thread:with-recursive-lock ((lock-lock rw-lock))
-    (if (next-in-queue? rw-lock sb-thread:*current-thread*)
+    (if (next-in-queue? rw-lock (vg-current-thread))
 	(dequeue (lock-writer-queue rw-lock))
 	(error "Cannot release lock I don't own!"))
-    (if (next-in-queue? rw-lock sb-thread:*current-thread*)
+    (if (next-in-queue? rw-lock (vg-current-thread))
 	;;(format t "Not releasing lock;  recursive ownership detected!~%")
 	nil
 	(progn
@@ -65,22 +65,22 @@
 
 (defun acquire-write-lock (rw-lock &key (max-tries 1000) reading-p)
   (sb-thread:with-recursive-lock ((lock-lock rw-lock))
-    (if (and (next-in-queue? rw-lock sb-thread:*current-thread*)
-	     (eq (lock-writer rw-lock) sb-thread:*current-thread*))
+    (if (and (next-in-queue? rw-lock (vg-current-thread))
+	     (eq (lock-writer rw-lock) (vg-current-thread)))
 	(progn
-	  (enqueue-front (lock-writer-queue rw-lock) sb-thread:*current-thread*)
+	  (enqueue-front (lock-writer-queue rw-lock) (vg-current-thread))
 	  (return-from acquire-write-lock rw-lock))
-	(enqueue (lock-writer-queue rw-lock) sb-thread:*current-thread*)))
+	(enqueue (lock-writer-queue rw-lock) (vg-current-thread))))
   (loop for tries from 0 to max-tries do
-       (if (eq (lock-writer rw-lock) sb-thread:*current-thread*)
+       (if (eq (lock-writer rw-lock) (vg-current-thread))
 	   (return-from acquire-write-lock rw-lock)
 	   (let ((wait-p nil))
 	     (handler-case
 		 (sb-thread:with-recursive-lock ((lock-lock rw-lock))
 		   (if (and (null (lock-writer rw-lock))
-			    (next-in-queue? rw-lock sb-thread:*current-thread*))
+			    (next-in-queue? rw-lock (vg-current-thread)))
 		       (progn
-			 (setf (lock-writer rw-lock) sb-thread:*current-thread*)
+			 (setf (lock-writer rw-lock) (vg-current-thread))
 			 (when reading-p
 			   (decf (lock-readers rw-lock)))
 			 (unless (eql 0 (lock-readers rw-lock))
@@ -103,14 +103,16 @@
 	     (:constructor %make-lock-pool)
 	     (:predicate lock-pool?))
   (lock (make-recursive-lock))
-  (queue (sb-concurrency:make-queue))
+  ;; (queue (sb-concurrency:make-queue))
+  (queue (concurrent-make-queue))
   (acquired-locks (make-hash-table :synchronized t))
   (size 20))
 
 (defun make-lock-pool (size)
   (let ((pool (%make-lock-pool :size size)))
     (dotimes (i size)
-      (sb-concurrency:enqueue (make-rw-lock) (lock-pool-queue pool)))
+      ;; (sb-concurrency:enqueue (make-rw-lock) (lock-pool-queue pool)))
+      (concurrent-enqueue (make-rw-lock) (lock-pool-queue pool)))
     pool))
 
 (defun change-lock-pool-size (pool new-size)
@@ -118,20 +120,23 @@
 	 (sb-thread:with-recursive-lock ((lock-pool-lock pool))
 	   (cas (lock-pool-size pool) (lock-pool-size pool) new-size)
 	   (dotimes (i (- new-size (lock-pool-size pool)))
-	     (sb-concurrency:enqueue (make-rw-lock) (lock-pool-queue pool)))))
+	     ;; (sb-concurrency:enqueue (make-rw-lock) (lock-pool-queue pool)))))
+	     (concurrent-enqueue (make-rw-lock) (lock-pool-queue pool)))))
 	((< new-size (lock-pool-size pool))
 	 (error "Cannot shrink lock pool size")))
   new-size)
 
 (defun release-pool-lock (pool lock)
   (if (remhash lock (lock-pool-acquired-locks pool))
-      (sb-concurrency:enqueue lock (lock-pool-queue pool))
+      ;; (sb-concurrency:enqueue lock (lock-pool-queue pool))
+      (concurrent-enqueue lock (lock-pool-queue pool))
       (error "Lock ~A not in acquired-locks list" lock)))
 
 (defun get-pool-lock (pool &key (wait-p t) timeout)
   (let ((start-time (gettimeofday)))
     (loop
-       (let ((lock (sb-concurrency:dequeue (lock-pool-queue pool))))
+       ;; (let ((lock (sb-concurrency:dequeue (lock-pool-queue pool))))
+       (let ((lock (concurrent-dequeue (lock-pool-queue pool))))
 	 (if (rw-lock? lock)
 	     (progn
 	       (setf (gethash lock (lock-pool-acquired-locks pool)) t)
