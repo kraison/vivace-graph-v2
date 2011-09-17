@@ -93,6 +93,8 @@
 ;; %set-triple-cf   -- evaluates uuid:make-uuid-from-string and vg-uuid:uuid? #UPDATED
 ;; %undelete-triple -- evaluates uuid:make-uuid-from-string and vg-uuid:uuid? #UPDATED
 ;; %delete-triple   -- evaluates uuid:make-uuid-from-string and vg-uuid:uuid? #UPDATED
+;; :NOTE this isn't correct for `indexable-v5-uuid' as returns instances of
+;; unicly:unique-universal-identifier
 (defun uuid-from-string (string)
   (unicly:make-uuid-from-string string))
 
@@ -111,36 +113,6 @@
 ;; :SEE deserialize method specialzed on +uuid+in vivace-graph-v2/deserialize.lisp
 ;; (defun deserialize-uuid (stream)
 ;;   (unicly::uuid-from-byte-array (unicly::uuid-deserialize-byte-array-bytes stream)))
-
-(defclass indexable-v5-uuid (unicly:unique-universal-identifier)
-  ((bit-vector 
-    :reader bit-vector-of-uuid)
-   (integer-128
-    :reader integer-128-of-uuid)))
-
-;; define the function `make-v5-uuid-indexable'
-;; (make-v5-uuid-indexable *uuid-namespace-dns* "bubba")
-(unicly::def-make-v5-uuid-extended indexable indexable-v5-uuid)
-
-(defmethod update-instance-for-different-class  ((old unicly:unique-universal-identifier)
-                                                 (new uuid-indexable-v5)
-                                                 &key)
-  (with-slots '(%uuid_time-low
-                %uuid_time-mid
-                %uuid_time-high-and-version 
-                %uuid_clock-seq-and-reserved
-                %uuid_clock-seq-low 
-                %uuid_node)
-      old
-    (setf (slot-value new '%uuid_time-low) old
-          (slot-value new '%uuid_time-mid) old
-          (slot-value new '%uuid_time-high-and-version) old
-          (slot-value new '%uuid_clock-seq-and-reserved) old
-          (slot-value new '%uuid_clock-seq-low) old
-          (slot-value new '%uuid_node) old
-          (slot-value new 'bit-vector) (unicly:uuid-to-bit-vector old)
-          (slot-value new 'integer-128)
-          (unicly::uuid-bit-vector-to-integer (slot-value new 'bit-vector)))))
 
 (defun make-v5-uuid (namespace uuid)
   (make-v5-uuid-indexable namespace uuid))
@@ -172,8 +144,38 @@
                                :synchronized     synchronized))
 
 
+;;; ==============================
+;;; Experimentatal
+(defclass indexable-v5-uuid (unicly:unique-universal-identifier)
+  ((bit-vector 
+    :reader bit-vector-of-uuid)
+   (integer-128
+    :reader integer-128-of-uuid)))
 
+;; define the function `make-v5-uuid-indexable'
+;; (make-v5-uuid-indexable *uuid-namespace-dns* "bubba")
+(unicly::def-make-v5-uuid-extended indexable indexable-v5-uuid)
 
+(defmethod update-instance-for-different-class  ((old unicly:unique-universal-identifier)
+                                                 (new uuid-indexable-v5)
+                                                 &key)
+  (with-slots (%uuid_time-low
+               %uuid_time-mid
+               %uuid_time-high-and-version 
+               %uuid_clock-seq-and-reserved
+               %uuid_clock-seq-low 
+               %uuid_node)
+      old
+    (setf (slot-value new '%uuid_time-low) %uuid_time-low
+          (slot-value new '%uuid_time-mid) %uuid_time-mid
+          (slot-value new '%uuid_time-high-and-version) %uuid_time-high-and-version
+          (slot-value new '%uuid_clock-seq-and-reserved) %uuid_clock-seq-and-reserved
+          (slot-value new '%uuid_clock-seq-low) %uuid_clock-seq-low
+          (slot-value new '%uuid_node) %uuid_node
+          (slot-value new 'bit-vector)  (unicly:uuid-to-bit-vector old)
+          (slot-value new 'integer-128) (unicly::uuid-bit-vector-to-integer (slot-value new 'bit-vector)))))
+
+;; (make-v5-uuid-indexable unicly:*uuid-namespace-dns* "bubba")
 
 ;;; ==============================
 ;; (defun uuid-to-byte-array (uuid &optional (type-specifier nil))
