@@ -145,21 +145,25 @@
 
 
 ;;; ==============================
-;;; Experimentatal
+;;; :NOTE Experimentatal the bit-vector and byte-array related macros are not yet defined
+
 (defclass indexable-uuid (unicly:unique-universal-identifier)
   ((bit-vector 
     :reader bit-vector-of-uuid)
    (integer-128
     :reader integer-128-of-uuid)))
 
-;; define the function `make-v3-uuid-indexable', `make-v5-uuid-indexable',
-;; `make-v4-uuid-indexable', `make-uuid-from-string'
+;; define the functions `make-v3-uuid-indexable', `make-v5-uuid-indexable',
+;; `make-v4-uuid-indexable', `make-uuid-from-string',
+;; `make-uuid-from-byte-array-indexable'
 ;; (make-v5-uuid-indexable unicly:*uuid-namespace-dns* "bubba")
 ;; (unicly::def-make-v5-uuid-extended indexable indexable-v5-uuid)
+;; (unicly::def-make-uuid-byte-array-extended indexable indexable-uuid)
 
 (unicly::def-make-uuid-extend-class-fun indexable indexable-uuid)
 
-;; (make-v4-uuid-indexable)
+;; (defparameter *tt--indexed* (make-v4-uuid-indexable))
+;; (defparameter *tt--indexed* (make-uuid-from-byte-array-indexable (unicly::uuid-to-byte-array (make-v5-uuid-indexable unicly::*uuid-namespace-dns* "bubba"))))
 ;; (unicly::%verify-valid-subclass-and-slots 'indexable-uuid)
 
 (defmethod update-instance-for-different-class  ((old unicly:unique-universal-identifier)
@@ -180,28 +184,6 @@
           (slot-value new 'unicly::%uuid_node) unicly::%uuid_node
           (slot-value new 'bit-vector)  (unicly:uuid-to-bit-vector old)
           (slot-value new 'integer-128) (unicly::uuid-bit-vector-to-integer (slot-value new 'bit-vector)))))
-
-
- (defmethod update-instance-for-different-class  ((old unicly:unique-universal-identifier)
-                                                  (new indexable-uuid)
-                                                  &key)
-   (with-slots (%uuid_time-low
-                %uuid_time-mid
-                %uuid_time-high-and-version 
-                %uuid_clock-seq-and-reserved
-                %uuid_clock-seq-low 
-                %uuid_node)
-       old
-     (setf (slot-value new '%uuid_time-low) %uuid_time-low
-           (slot-value new '%uuid_time-mid) %uuid_time-mid
-           (slot-value new '%uuid_time-high-and-version) %uuid_time-high-and-version
-           (slot-value new '%uuid_clock-seq-and-reserved) %uuid_clock-seq-and-reserved
-           (slot-value new '%uuid_clock-seq-low) %uuid_clock-seq-low
-           (slot-value new '%uuid_node) %uuid_node
-           (slot-value new 'bit-vector)  (unicly:uuid-to-bit-vector old)
-           (slot-value new 'integer-128) (unicly::uuid-bit-vector-to-integer (slot-value new 'bit-vector)))))
-
-
 
 ;; (make-v5-uuid-indexable unicly:*uuid-namespace-dns* "bubba")
 
