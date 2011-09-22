@@ -1,5 +1,12 @@
 (in-package #:vivace-graph-v2)
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+
+(defmacro defconst (name value &optional doc)
+  `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
+     ,@(when doc (list doc))))
+)
+
 (cffi:defctype size :unsigned-int)
 
 ;; Prolog constants and specials
@@ -12,30 +19,35 @@
 (defconstant +cf-false+  -1.0)
 (defconstant +cf-unknown+ 0.0)
 
+;; :TODO These variables are treated as constants, e.g. with the +<FOO>+ convention
+;; Unless there is some reason why these shouldn't be def i'd perfer to define the as such -- MON
+;;
 ;; :NOTE Changed radix of following constants/variables to hex just in case
 ;; someone has an insane value for `cl:*read-base*'
 
+;; :NOTE these were `cl:defparameter'd
 ;; Shortened slot identifiers for slot keys
-(defparameter +predicate-slot+     #x00)
-(defparameter +subject-slot+       #x01)
-(defparameter +object-slot+        #x02)
-(defparameter +timestamp-slot+     #x03)
-(defparameter +belief-factor-slot+ #x04)
-(defparameter +deleted?-slot+      #x04)
-(defparameter +derived?-slot+      #x05)
-(defparameter +uuid-slot+          #x06)
-(defparameter +name-slot+          #x07)
-(defparameter +clauses-slot+       #x08)
-(defparameter +premises-slot+      #x09)
-(defparameter +conclusions-slot+   #x0a)
-(defparameter +cf-slot+            #x0b)
+(defconst +predicate-slot+     #x00)
+(defconst +subject-slot+       #x01)
+(defconst +object-slot+        #x02)
+(defconst +timestamp-slot+     #x03)
+(defconst +belief-factor-slot+ #x04)
+(defconst +deleted?-slot+      #x04)
+(defconst +derived?-slot+      #x05)
+(defconst +uuid-slot+          #x06)
+(defconst +name-slot+          #x07)
+(defconst +clauses-slot+       #x08)
+(defconst +premises-slot+      #x09)
+(defconst +conclusions-slot+   #x0a)
+(defconst +cf-slot+            #x0b)
 
+;; :NOTE these were `cl:defparameter'd
 ;; Action identifiers for serialization
-(defparameter +transaction+        #x00)
-(defparameter +add-triple+         #x01)
-(defparameter +delete-triple+      #x02)
-(defparameter +undelete-triple+    #X03)
-(defparameter +set-cf+             #x04)
+(defconst +transaction+        #x00)
+(defconst +add-triple+         #x01)
+(defconst +delete-triple+      #x02)
+(defconst +undelete-triple+    #X03)
+(defconst +set-cf+             #x04)
 
 ;; Built-in type identifiers for serializing
 (defconstant +needs-lookup+        :needs-lookup)
@@ -54,6 +66,7 @@
 (defconstant +blob+                #x0D) ;; Uninterpreted octets
 (defconstant +dotted-list+         #x0E) 
 (defconstant +compressed-string+   #x0F)
+
 ;; User-defined type identifiers for serializing. Start at 100
 (defconstant +uuid+                #x64) 
 (defconstant +triple+              #x65) 
