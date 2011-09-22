@@ -24,6 +24,19 @@
 ;;; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 ;;; DEALINGS IN THE SOFTWARE.
 ;;;
+;;; ==============================
+
+;; As of 2011-09-21 the `gettimeofday' defined herein has the following callers:
+;; `set-dirty' `start-logger' `delete-triple' `truly-delete-triple' `get-pool-lock'
+;; :TODO We should be using someone else's posix compatibility for this. -- MON
+
+;; (defpackage #:vg-get-time-of-day
+;;   (:use #:common-lisp #:cffi)
+;;   (:export #:gettimeofday))
+
+;; :WAS (in-package #:vivace-graph-v2)
+(in-package #:vg-get-time-of-day)
+
 
 ;;;# CFFI Example: gettimeofday binding
 ;;;
@@ -34,7 +47,6 @@
 ;;; Define the TIMEVAL structure used by 'gettimeofday'. This assumes
 ;;; that 'time_t' is a 'long' --- it would be nice if CFFI could
 ;;; provide a proper :TIME-T type to help make this portable.
-(in-package #:vivace-graph-v2)
 
 (defcstruct timeval
   (tv-sec :long)
