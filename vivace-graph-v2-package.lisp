@@ -1,8 +1,17 @@
 ;; (in-package #:cl-user)
 
+(defpackage #:graph-words
+  (:nicknames :node)
+  ;; (:use)
+  )
+
+;; :NOTE If possible, I'd like to _not_ ":use" some of these packages.
+;; I've already made some effort to package qualify the bordeaux-threads symbols
+;; b/c it is most prone to namespace conflicts. -- MON
 (defpackage #:vivace-graph-v2
+  (:nicknames :vg)
   (:use #:common-lisp
-	#:cffi 
+	#:cffi         
 	#:bordeaux-threads 
 	#:cl-skip-list
 	#:local-time)
@@ -165,3 +174,5 @@
 
 	   #:flatten
 	   ))
+
+
