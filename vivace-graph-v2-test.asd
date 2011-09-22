@@ -15,6 +15,7 @@
 	       :cl-fad
 	       :fiveam)
   :components ((:file "vivace-graph-v2-test-package")
+               (:file "test-aux" :depends-on ("vivace-graph-v2-test-package"))
 	       (:file "test-scenarios" :depends-on ("vivace-graph-v2-test-package"))
 	       (:file "vivace-graph-v2-test" :depends-on ("test-scenarios"))))
 

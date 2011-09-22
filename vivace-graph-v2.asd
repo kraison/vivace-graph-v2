@@ -11,7 +11,8 @@
   :version "0.2"
   :description "Vivace Graph Version 2"
   :long-description "Vivace Graph Version 2."
-  :depends-on (:babel
+  :depends-on (
+               :babel  ;; cl-btree ???
 	       #+sbcl :sb-concurrency
 	       #+sbcl :sb-posix
 	       :cffi
@@ -37,24 +38,26 @@
 	       (:file "hash-table" :depends-on ("vivace-graph-v2-package")) ;;"sb-thread")) 
                (:file "concurrency-bridge" :depends-on ("vivace-graph-v2-package"))
 	       (:file "gettimeofday" :depends-on ("vivace-graph-v2-package"))
-	       (:file "conditions" :depends-on ("vivace-graph-v2-package"))
-	       (:file "constants" :depends-on ("conditions"))
-	       (:file "globals" :depends-on ("constants"))
-	       (:file "utilities" :depends-on ("globals"))
-	       (:file "lock" :depends-on ("utilities" "hash-table"))
-	       (:file "data-types" :depends-on ("lock"))
+	       (:file "conditions"        :depends-on ("vivace-graph-v2-package"))
+	       (:file "constants"         :depends-on ("conditions"))
+	       (:file "globals"           :depends-on ("constants"))
+	       (:file "utilities"         :depends-on ("globals"))
+	       (:file "lock"              :depends-on ("utilities" "hash-table"))
+	       (:file "data-types"        :depends-on ("lock"))
 	       (:file "certainty-factors" :depends-on ("constants"))
-	       (:file "serialize" :depends-on ("data-types"))
-	       (:file "deserialize" :depends-on ("serialize"))
-	       (:file "index" :depends-on ("deserialize"))
-	       (:file "transaction" :depends-on ("index"))
-	       (:file "full-text-index" :depends-on ("transaction"))
-	       (:file "store" :depends-on ("transaction" "full-text-index"))
-	       (:file "namespaces" :depends-on ("store"))
-	       (:file "functor" :depends-on ("namespaces"))
-	       (:file "triples" :depends-on ("functor" "gettimeofday"))
-	       (:file "prologc" :depends-on ("triples"))
-	       (:file "prolog-functors" :depends-on ("prologc"))
-	       (:file "templates" :depends-on ("prolog-functors"))
+	       (:file "serialize"         :depends-on ("data-types"))
+	       (:file "deserialize"       :depends-on ("serialize"))
+               (:file "btree"             :depends-on ("deserialize")) 
+               (:file "table"             :depends-on ("btree")) 
+	       (:file "index"             :depends-on ("deserialize"))
+	       (:file "transaction"       :depends-on ("index"))
+	       (:file "full-text-index"   :depends-on ("transaction"))
+	       (:file "store"             :depends-on ("transaction" "full-text-index"))
+	       (:file "namespaces"        :depends-on ("store"))
+	       (:file "functor"           :depends-on ("namespaces"))
+	       (:file "triples"           :depends-on ("functor" "gettimeofday"))
+	       (:file "prologc"           :depends-on ("triples"))
+	       (:file "prolog-functors"   :depends-on ("prologc"))
+	       (:file "templates"         :depends-on ("prolog-functors"))
                (:file "vivace-graph-v2-doc-utils" :depends-on ("vivace-graph-v2-package"))
-               (:file "vivace-graph-v2-docs" :depends-on ("vivace-graph-v2-doc-utils"))))
+               (:file "vivace-graph-v2-docs"      :depends-on ("vivace-graph-v2-doc-utils"))))
