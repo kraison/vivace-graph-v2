@@ -1,5 +1,7 @@
 (in-package #:vivace-graph-v2)
 
+;; :NOTE Where is DEPTH used in the following function?
+;; Should it be declared ignore? -- MON
 (defun print-rw-lock (lock stream depth)
   (format stream "#<RW-LOCK, W: ~A, R: ~A>" (lock-writer lock) (lock-readers lock)))
 
@@ -7,12 +9,22 @@
 	     (:conc-name lock-)
 	     (:print-function print-rw-lock)
 	     (:predicate rw-lock?))
-  (lock (sb-thread:make-mutex) :type sb-thread:mutex)
-  (readers 0 :type integer)
-  (semaphore (sb-thread:make-semaphore) :type sb-thread:semaphore)
-  (writer-queue (make-empty-queue) :type queue)
-  (writer nil)
-  (waitqueue (sb-thread:make-waitqueue) :type sb-thread:waitqueue))
+  (lock                                 ; lock-lock
+   (sb-thread:make-mutex)
+   :type sb-thread:mutex)
+  (readers                              ; lock-readers
+   0
+   :type integer)
+  (semaphore                            ; lock-semaphore
+   (sb-thread:make-semaphore)
+   :type sb-thread:semaphore)
+  (writer-queue                         ; lock-writer-queue
+   (make-empty-queue)
+   :type queue) 
+  (writer nil)                          ; lock-writer
+  (waitqueue                            ; lock-waitqueue
+   (sb-thread:make-waitqueue)
+   :type sb-thread:waitqueue))
 
 (defun next-in-queue? (rw-lock thread)
   (sb-thread:with-recursive-lock ((lock-lock rw-lock))
@@ -150,7 +162,7 @@
 #|
 (defun test-rw-locks ()
   (let ((lock (make-rw-lock)))
-    (make-thread
+    (bt:make-thread
      #'(lambda () (with-write-lock (lock) 
 		    (format t "1 got write lock.  Sleeping.~%")
 		    (sleep 5)
@@ -163,11 +175,11 @@
 			(format t "1 releasing recursive write lock.~%"))
 		      (format t "1 releasing recursive write lock.~%"))
 		    (format t "1 releasing write lock.~%"))))
-    (make-thread 
+    (bt:make-thread
      #'(lambda () (with-read-lock (lock) (format t "2 got read lock~%") (sleep 5))))
-    (make-thread 
+    (bt:make-thread 
      #'(lambda () (with-read-lock (lock) (format t "3 got read lock~%") (sleep 5))))
-    (make-thread
+    (bt:make-thread
      #'(lambda () (with-write-lock (lock) 
 		    (format t "4 got write lock.  Sleeping.~%")
 		    (sleep 5)
@@ -180,13 +192,13 @@
 			(format t "4 releasing recursive write lock.~%"))
 		      (format t "4 releasing recursive write lock.~%"))
 		    (format t "4 releasing write lock.~%"))))
-    (make-thread
+    (bt:make-thread
      #'(lambda () (with-write-lock (lock) 
 		    (format t "5 got write lock.  Sleeping.~%")
 		    (sleep 5)
 		    (format t "5 releasing write lock.~%"))))
-    (make-thread 
+    (bt:make-thread 
      #'(lambda () (with-read-lock (lock) (format t "6 got read lock~%") (sleep 5))))
-    (make-thread 
+    (bt:make-thread 
      #'(lambda () (with-read-lock (lock) (format t "7 got read lock~%") (sleep 5))))))
 |#
