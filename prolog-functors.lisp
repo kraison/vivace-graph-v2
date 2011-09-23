@@ -77,7 +77,7 @@
 ;  (var-deref ?item)
 ;  (when (and (listp list)
 ;	     (member ?item list
-;                    :test #'(lambda (x y) (var-deref y) (prolog-equal x y))))
+;                    :test #'(lambda (x y) (var-deref y) (vg-equal x y))))
 ;    (funcall cont)))
 
 (def-global-prolog-functor lisp/2 (?result exp cont)

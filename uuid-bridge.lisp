@@ -70,7 +70,7 @@
     (unicly:unique-universal-identifier-p thing))
   (:documentation "UUID type predicate."))
 
-;; prolog-equal -- safe 
+;; vg-equal -- safe 
 ;; triple-eql      -- should be safe 
 ;;                    this is specialized on triples by comparing triple identity per the uuid which dereferences them, 
 ;; triple-equal     -- Ths one is trickier -- it is as above but also requires that the subject, predicate, and object of two  triples satisfy cl:equal

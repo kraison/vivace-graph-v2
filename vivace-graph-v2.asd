@@ -41,6 +41,7 @@
 	       (:file "constants"          :depends-on ("conditions"))
 	       (:file "globals"            :depends-on ("constants"))
 	       (:file "utilities"          :depends-on ("globals"))
+	       (:file "compare"            :depends-on ("vivace-graph-v2-package"))
                (:file "queue"              :depends-on ("vivace-graph-v2-package"))
 	       (:file "lock"               :depends-on ("utilities" "hash-table" "queue"))
 	       (:file "data-types"         :depends-on ("lock"))

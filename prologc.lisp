@@ -3,19 +3,26 @@
 ;;;; Copyright (c) 1991 Peter Norvig, (c) 2010 Kevin Raison
 (in-package #:vivace-graph-v2)
 
-(defun trace-prolog () (setq *prolog-trace* t))
-(defun untrace-prolog () (setq *prolog-trace* nil))
+(defun trace-prolog () 
+  (setq *prolog-trace* t))
 
-(defstruct (var (:constructor ? ())
-                (:print-function print-var))
-  (name (incf *var-counter*))
-  (binding +unbound+))
+(defun untrace-prolog () 
+  (setq *prolog-trace* nil))
+
+(defstruct (var (:constructor ? ())     ; var?
+                (:print-function print-var)) 
+  (name                                 ; var-name
+   (incf *var-counter*))
+  (binding                              ; var-binding
+   +unbound+))
 
 (defmacro var-deref (exp)
   "Follow pointers for bound variables."
-  `(progn (loop while (and (var-p ,exp) (bound-p ,exp))
-             do (setf ,exp (var-binding ,exp)))
-	  ,exp))
+  `(progn 
+     (loop 
+        while (and (var-p ,exp) (bound-p ,exp))
+        do (setf ,exp (var-binding ,exp)))
+     ,exp))
 
 (defun print-var (var stream depth)
   (if (or (and *print-level*
@@ -24,25 +31,12 @@
       (format stream "?~a" (var-name var))
       (write var :stream stream)))
 
-(defun bound-p (var) (not (eq (var-binding var) +unbound+)))
-
-(defgeneric prolog-equal (x y)
-  (:documentation "Generic equality operator for prolog unification. Specialize 
-this for new types that will be stored in the db.")
-  (:method ((x number) (y number)) (= x y))
-  (:method ((x string) (y string)) (string= x y))
-  (:method ((x character) (y character)) (char= x y))
-  (:method ((x timestamp) (y timestamp)) (timestamp= x y))
-  (:method ((x timestamp) (y integer)) (= (timestamp-to-universal x) y))
-  (:method ((x integer) (y timestamp)) (= (timestamp-to-universal y) x))
-  (:method ((x triple) (y triple)) (triple-equal x y))
-  ;; (:method ((x uuid:uuid) (y uuid:uuid)) (vg-uuid:uuid-eql x y))
-  (:method ((x unicly:unique-universal-identifier) (y unicly:unique-universal-identifier)) (vg-uuid:uuid-eql x y))
-  (:method (x y) (equal x y)))
+(defun bound-p (var) 
+  (not (eq (var-binding var) +unbound+)))
 
 (defun unify (x y)
   "Destructively unify two expressions."
-  (cond ((prolog-equal (var-deref x) (var-deref y)) t)
+  (cond ((vg-equal (var-deref x) (var-deref y)) t)
         ((var-p x) (set-binding x y))
         ((var-p y) (set-binding y x))
         ((and (consp x) (consp y))
@@ -60,7 +54,8 @@ this for new types that will be stored in the db.")
 
 (defun undo-bindings (old-trail)
   "Undo all bindings back to a given point in the trail."
-  (loop until (= (fill-pointer *trail*) old-trail)
+  (loop 
+     until (= (fill-pointer *trail*) old-trail)
      do (setf (var-binding (vector-pop *trail*)) +unbound+)))
 
 (defmethod clause-head ((triple triple))
@@ -94,8 +89,9 @@ this for new types that will be stored in the db.")
 
 (defun make-parameters (arity)
   "Return the list (?arg1 ?arg2 ... ?arg-arity)"
-  (loop for i from 1 to arity
-        collect (new-interned-symbol '?arg i)))
+  (loop 
+     for i from 1 to arity
+     collect (new-interned-symbol '?arg i)))
 
 (defun make-functor-symbol (symbol arity)
   (new-interned-symbol symbol '/ arity))
@@ -167,16 +163,18 @@ this for new types that will be stored in the db.")
       compiled-exps
       `((let ((old-trail (fill-pointer *trail*)))
           ,(first compiled-exps)
-          ,@(loop for exp in (rest compiled-exps)
-                  collect '(undo-bindings old-trail)
-                  collect exp)))))
+          ,@(loop 
+               for exp in (rest compiled-exps)
+               collect '(undo-bindings old-trail)
+               collect exp)))))
 
 (defmacro with-undo-bindings (&body body)
   (if (length=1 body)
       (first body)
       `(let ((old-trail (fill-pointer *trail*)))
 	 ,(first body)
-	 ,@(loop for exp in (rest body)
+	 ,@(loop 
+              for exp in (rest body)
 	      collect '(undo-bindings old-trail)
 	      collect exp))))
 
@@ -231,7 +229,7 @@ this for new types that will be stored in the db.")
   (cond
     ;; Unify constants and conses:                       ; Case
     ((not (or (has-variable-p x) (has-variable-p y)))    ; 1,2
-     (values (prolog-equal x y) bindings))
+     (values (vg-equal x y) bindings))
     ((and (consp x) (consp y))                           ; 3
      (multiple-value-bind (code1 bindings1)
          (compile-unify (first x) (first y) bindings)
@@ -263,7 +261,7 @@ this for new types that will be stored in the db.")
          (y1 (if yb (cdr yb) y)))
     (cond                                                  ; Case:
       ((or (eq x '?) (eq y '?)) (values t bindings))       ; 12
-      ((not (and (prolog-equal x x1) (prolog-equal y y1))) ; deref
+      ((not (and (vg-equal x x1) (vg-equal y y1))) ; deref
        (compile-unify x1 y1 bindings))
       ((find-anywhere x1 y1) (values nil bindings))        ; 11
       ((consp y1)                                          ; 7,10
@@ -301,7 +299,9 @@ this for new types that will be stored in the db.")
                               (variables-in goal))))
     (nconc (mapcar #'self-cons variables) bindings)))
 
-(defun self-cons (x) (cons x x))
+(defun self-cons (x)
+  (declare (optimize (speed 3)))
+  (cons x x))
 
 (def-prolog-compiler-macro = (goal body cont bindings)
   "Compile a goal which is a call to =."
@@ -358,7 +358,7 @@ this for new types that will be stored in the db.")
     body))
 
 (defun add-clause (clause)
-  "add a user-defined functor"
+  "Add a user-defined functor"
   (let* ((functor-name (first (clause-head clause))))
     (when *prolog-trace* (format t "TRACE:  Adding clause ~A~%" clause))
     (assert (and (atom functor-name) (not (variable-p functor-name))))
@@ -406,7 +406,7 @@ this for new types that will be stored in the db.")
         exp)))
 
 (defun deref-equal (x y)
-  (or (prolog-equal (var-deref x) (var-deref y))
+  (or (vg-equal (var-deref x) (var-deref y))
       (and (consp x)
 	   (consp y)
 	   (deref-equal (first x) (first y))
