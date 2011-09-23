@@ -8,7 +8,6 @@
 (defparameter *store* nil)
 (defparameter *store-table* (vg-make-hash-table :synchronized t :test 'eql))
 
-
 ;; IMHO the null-uuid is basically a thing that exists b/c it has to otherwise
 ;; the UUID model falls over and unless there is a specific reason for using the
 ;; null-uuid we shouldn'? -- MON

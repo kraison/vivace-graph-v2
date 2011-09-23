@@ -7,6 +7,10 @@
      ,@(when doc (list doc))))
 )
 
+(defconst +sleep-time-for-spin+ 0.000000001
+  "Floating point time to cl:sleep when spinlock-ing.~%
+:SEE `vg-get-spinlock', `get-pool-lock'")
+
 (cffi:defctype size :unsigned-int)
 
 ;; Prolog constants and specials

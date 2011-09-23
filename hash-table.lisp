@@ -269,7 +269,7 @@
                         (optimize (speed 3) (safety 0)))
                (if (vg-compare-and-swap-spinlock-value spinlock nil new)
                    (progn
-                     (sleep 0.000000001)
+                     (sleep +sleep-time-for-spin+)
                      (vg-thread-yield-cas-spinlock))
                    (return-from vg-get-spinlock t))))
         (if (the boolean (vg-interrupts-allowed-and-not-enabled-check))

@@ -114,11 +114,15 @@
 (defstruct (lock-pool
 	     (:constructor %make-lock-pool)
 	     (:predicate lock-pool?))
-  (lock (make-recursive-lock))
+  (lock                                 ; lock-pool-lock
+   (make-recursive-lock)) 
   ;; (queue (sb-concurrency:make-queue))
-  (queue (concurrent-make-queue))
-  (acquired-locks (vg-make-hash-table :synchronized t))
-  (size 20))
+  (queue                                ; lock-pool-queue
+   (concurrent-make-queue))
+  (acquired-locks                       ; lock-pool-acquired-locks
+   (vg-make-hash-table :synchronized t))
+  (size                                 ; lock-pool-size
+   20))
 
 (defun make-lock-pool (size)
   (let ((pool (%make-lock-pool :size size)))
@@ -156,7 +160,7 @@
 	     (if wait-p
 		 (if (and timeout (> (gettimeofday) (+ start-time timeout)))
 		     (return-from get-pool-lock nil)
-		     (sleep 0.000000001))
+		     (sleep +sleep-time-for-spin+))
 		 (return-from get-pool-lock nil)))))))
 
 #|
