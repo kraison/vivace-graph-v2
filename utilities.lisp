@@ -66,6 +66,12 @@
   (:method ((x timestamp) (y number))
     (< x (timestamp-to-universal y)))
 
+  ;; (:method ((x puri:uri) y)
+  ;;   (b-tree-impl::key< x (princ-to-string y)))
+  ;;
+  ;; (:method b-tree-impl::key< ((x puri:uri) y)
+  ;;   (b-tree-impl::key< (princ-to-string x) y))
+
   ;; :WAS 
   ;; (:method ((x uuid:uuid) (y uuid:uuid)) 
   ;;        (string< (uuid:print-bytes nil x) (uuid:print-bytes nil y)))

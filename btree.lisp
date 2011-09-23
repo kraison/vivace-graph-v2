@@ -10,9 +10,6 @@
     (b-tree-impl::key= x y)
     (b-tree-impl::key< y x)))
 
-
-
-
 (defmethod b-tree-impl::key< ((x puri:uri) y)
   (b-tree-impl::key< (princ-to-string x) y))
 
@@ -25,51 +22,75 @@
 (defmethod b-tree-impl::key= (x (y puri:uri))
   (b-tree-impl::key= x (puri::uri-string y)))
 
-
-
-
 (defmethod b-tree-impl::key< ((x symbol) y)
-  (string< (symbol-name x) y))
+  ;; (string< (symbol-name x) y)
+  (less-than x y))
 
 (defmethod b-tree-impl::key< ((x symbol) (y number))
-  (string< (symbol-name x) (write-to-string y)))
+  ;;(string< (symbol-name x) (write-to-string y))
+  (less-than x y))
 
 (defmethod b-tree-impl::key< ((x number) (y symbol))
-  (string< (write-to-string x) (symbol-name y)))
+  ;; (string< (write-to-string x) (symbol-name y))
+  (less-than x y))
 
 (defmethod b-tree-impl::key< ((x number) (y string))
-  (string< (write-to-string x) y))
-
-(defmethod b-tree-impl::key< ((x number) (y uuid:uuid))
-  (string< (write-to-string x) (uuid:print-bytes nil y)))
+  ;; (string< (write-to-string x) y)
+  (less-than x y))
 
 (defmethod b-tree-impl::key< ((x string) (y symbol))
-  (string< x (symbol-name y)))
+  ;; (string< x (symbol-name y))
+  (less-than x y))
 
 (defmethod b-tree-impl::key< ((x string) (y number))
-  (string< x (write-to-string y)))
-
-(defmethod b-tree-impl::key< ((x string) (y uuid:uuid))
-  (string< x (uuid:print-bytes nil y)))
+  ;;(string< x (write-to-string y))
+  (less-than x y))
 
 (defmethod b-tree-impl::key< ((x timestamp) (y timestamp))
-  (timestamp< x y))
+  ;; (timestamp< x y)
+  (less-than x y))
 
 (defmethod b-tree-impl::key< ((x number) (y timestamp))
-  (< (timestamp-to-universal x) y))
+  ;; (< (timestamp-to-universal x) y)
+  (less-than x y))
 
 (defmethod b-tree-impl::key< ((x timestamp) (y number))
-  (< x (timestamp-to-universal y)))
+  ;;(< x (timestamp-to-universal y))
+  (less-than x y))
 
-(defmethod b-tree-impl::key< ((x uuid:uuid) (y uuid:uuid))
-    (string< (uuid:print-bytes nil x) (uuid:print-bytes nil y)))
+;; :WAS 
+;; (defmethod b-tree-impl::key< ((x uuid:uuid) (y uuid:uuid))
+;;   (string< (uuid:print-bytes nil x) (uuid:print-bytes nil y)))
+(defmethod b-tree-impl::key< ((x unicly:unique-universal-identifier)
+                              (y unicly:unique-universal-identifier))
+  (less-than x y))
 
-(defmethod b-tree-impl::key< ((x uuid:uuid) (y string))
-  (string< (uuid:print-bytes nil x) y))
+;; :WAS
+;; (defmethod b-tree-impl::key< ((x string) (y uuid:uuid))
+;;   (string< x (uuid:print-bytes nil y)))
+(defmethod b-tree-impl::key< ((x string) (y unicly:unique-universal-identifier))
+  (less-than x y))
 
-(defmethod b-tree-impl::key< ((x uuid:uuid) (y symbol))
-  (string< (uuid:print-bytes nil x) (symbol-name y)))
+;; :WAS
+;; (defmethod b-tree-impl::key< ((x number) (y uuid:uuid))
+;;  (string< (write-to-string x) (uuid:print-bytes nil y))
+(defmethod b-tree-impl::key< ((x number) (y unicly:unique-universal-identifier))
+  (less-than x y))
 
-(defmethod b-tree-impl::key< ((x uuid:uuid) (y number))
-  (string< (uuid:print-bytes nil x) (write-to-string y))))
+;; :WAS
+;; (defmethod b-tree-impl::key< ((x uuid:uuid) (y string))
+;;   (string< (uuid:print-bytes nil x) y))
+(defmethod b-tree-impl::key< ((x unicly:unique-universal-identifier) (y string))
+  (less-than x y))
 
+;; :WAS
+;; (defmethod b-tree-impl::key< ((x uuid:uuid) (y symbol))
+;;   (string< (uuid:print-bytes nil x) (symbol-name y)))
+(defmethod b-tree-impl::key< ((x unicly:unique-universal-identifier) (y symbol))
+  (less-than x y))
+
+;; :WAS
+;; (defmethod b-tree-impl::key< ((x uuid:uuid) (y number))
+;;   (string< (uuid:print-bytes nil x) (write-to-string y)))
+(defmethod b-tree-impl::key< ((x unicly:unique-universal-identifier) (y number))
+  (less-than x y))
