@@ -300,6 +300,11 @@
   (if (vg-current-thread-spinlock-value-check hash-table)
       (vg-release-spinlock (vg-get-hash-table-spinlock hash-table))))
 
+(defun vg-define-hash-table-test (name hash-function)
+  ;; (sb-ext:define-hash-table-test idx-equal sxhash-idx)
+  #-:sbcl (error "not implemented -- what is equivalent of `sb-ext:define-hash-table-test'?")
+  #+:sbcl (sb-ext:define-hash-table-test name hash-function))
+
 ;; Keyword SIZE defaults to value of `SB-IMPL::+MIN-HASH-TABLE-SIZE+'.
 ;; Where the SIZE of the generated table is know It is likely that specifying a
 ;; value will enable the system to not require as much rehashing.
