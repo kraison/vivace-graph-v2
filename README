@@ -31,7 +31,7 @@ js: http://github.com/akapav/js
 split-sequence: http://www.cliki.net/SPLIT-SEQUENCE
 
 To get you started:
-
+nnnnpp
 (push #P"/path/to/vivace-graph-v2/" asdf:*central-registry*)
 
 (quicklisp:quickload 'vivace-graph-v2)

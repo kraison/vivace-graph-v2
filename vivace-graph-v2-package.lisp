@@ -1,11 +1,29 @@
 ;; (in-package #:cl-user)
 
+;; :NOTE I personally think the "NODE" nickname is a bad idea. 
+;; Who knows what other packages use this nickname already. -- MON
+(defpackage #:graph-words
+  (:nicknames :node)
+  (:use))
+
+(defpackage #:vg-get-time-of-day
+  (:use #:common-lisp #:cffi)
+  (:export #:gettimeofday))
+
+;; :NOTE If possible, I'd like to _not_ ":use" some of these packages.
+;; AFAICT the only feature which directly depends on CFFI is gettimeofday and
+;; that is now in its own package.
+;; Also, I've made some effort to package qualify the bordeaux-threads symbols
+;; b/c it is most prone to namespace conflicts. -- MON
+
 (defpackage #:vivace-graph-v2
+  (:nicknames :vg)
   (:use #:common-lisp
-	#:cffi 
+        #:cffi
 	#:bordeaux-threads 
 	#:cl-skip-list
 	#:local-time)
+  (:import-from #:vg-get-time-of-day #:gettimeofday)
   (:export #:*store*
 	   #:create-triple-store
 	   #:open-triple-store
@@ -165,3 +183,5 @@
 
 	   #:flatten
 	   ))
+
+

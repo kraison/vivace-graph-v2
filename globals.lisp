@@ -1,11 +1,39 @@
 (in-package #:vivace-graph-v2)
 
-(defpackage #:graph-words)
-(defparameter *graph-words* (find-package :graph-words))
+(defparameter *graph-words* (find-package "GRAPH-WORDS"))
+
+(defparameter *literals*    (vg-make-hash-table :synchronized t :test 'equalp))
+(defparameter *nodes*       (vg-make-hash-table :synchronized t :test 'equalp))
 
 (defparameter *store* nil)
-(defparameter *store-table* (make-hash-table :synchronized t :test 'eql))
-(defparameter *namespaces*  (make-hash-table :synchronized t :test 'equalp))
+(defparameter *store-table* (vg-make-hash-table :synchronized t :test 'eql))
+
+;; IMHO the null-uuid is basically a thing that exists b/c it has to otherwise
+;; the UUID model falls over and unless there is a specific reason for using the
+;; null-uuid we shouldn'? -- MON
+;;
+;; :WAS (defvar *default-context*   (unicly:make-null-uuid))
+(defvar *default-vivace-graph-context* (unicly:make-v5-uuid unicly:*uuid-namespace-dns* "*default-context*"))
+
+;; :FIXME Relying on asdf:<FOO> here is potentially a point of failure should
+;; this variable ever change location. 
+;; Also, in general, creating pathnames in someone elses tree is rude. 
+;; Also, this is a bad idea w/r/t any potential Quicklisp dist b/c it will leave
+;; a data/db somewhere underneath software/vivace-graph-v2 -- MON
+(defvar *default-location-defaults* (ensure-directories-exist
+                                     (asdf:system-relative-pathname
+                                      (asdf:find-system :vivace-graph-v2)
+                                      "data/" :type "db")))
+
+(defvar *constituent* nil
+  "dynamic indication of current node's statement constituent type")
+
+(defvar *depth* nil
+  "dynamic indication of depth during descent in hierarchical index")
+
+ 
+
+(defparameter *namespaces* (vg-make-hash-table :synchronized t :test 'equalp))
 
 (defparameter *read-uncommitted* t)
 
@@ -60,6 +88,6 @@
 
 (defvar *functor* nil)
 
-(defvar *prolog-global-functors* (make-hash-table :synchronized t))
+(defvar *prolog-global-functors* (vg-make-hash-table :synchronized t))
 
-(defvar *user-functors*          (make-hash-table :synchronized t :test 'eql))
+(defvar *user-functors*          (vg-make-hash-table :synchronized t :test 'eql))

@@ -41,21 +41,20 @@
 	 (make-instance 'local-triple-store
  			:name name
 			:location location
-			:main-idx (make-hierarchical-index)
+			:main-idx  (make-hierarchical-index)
 			:lock-pool (make-lock-pool num-locks)
-			:locks (make-hash-table :synchronized t :test 'equal)
-			:text-idx (make-skip-list :key-equal 'equalp
-						  :value-equal 'vg-uuid:uuid-eql
-						  :duplicates-allowed? t)
+			:locks     (vg-make-hash-table :synchronized t :test 'equal)
+			:text-idx  (make-skip-list :key-equal 'equalp
+                                                   :value-equal 'vg-uuid:uuid-eql
+                                                   :duplicates-allowed? t)
 			;; :log-mailbox  (sb-concurrency:make-mailbox)
 			;; :index-queue  (sb-concurrency:make-queue)
 			;; :delete-queue (sb-concurrency:make-queue)
 			:log-mailbox  (concurrent-make-mailbox)
 			:index-queue  (concurrent-make-queue)
 			:delete-queue (concurrent-make-queue)
-			:templates (make-hash-table :synchronized t :test 'eql)
-			:indexed-predicates (make-hash-table :synchronized t 
-							     :test 'eql))))
+			:templates    (vg-make-hash-table :synchronized t :test 'eql)
+			:indexed-predicates (vg-make-hash-table :synchronized t :test 'eql))))
     (add-to-index (main-idx store) (vg-uuid::make-uuid-table :synchronized t) :id-idx)
     (setf (logger-thread store) (start-logger store))
     store))

@@ -1,14 +1,12 @@
 (in-package #:vivace-graph-v2)
 
-
 (defstruct index-cursor                 ; make-index-cursor
   index                                 ; index-cursor-index
   vector                                ; index-cursor-vector
   pointer)                              ; index-cursor-pointer
 
-;; :NOTE It doesn't appear that `idx-equal' has callers.
 (defgeneric idx-equal (a b)
-  (:method ((a string) (b string))
+  (:method ((a string) (b string)) 
     (string= a b))
   (:method ((a number) (b number))
     (= a b))
@@ -29,7 +27,7 @@
   (sxhash item))
 
 ;; :WAS (sb-ext:define-hash-table-test idx-equal sxhash-idx)
-(vg-define-hash-table-test idx-equal sxhash-idx)
+(vg-define-hash-table-test 'idx-equal 'sxhash-idx)
 
 ;(defun make-idx-table (&key synchronized)
 ;  (vg-make-hash-table :test 'idx-equal :synchronized synchronized))
@@ -79,12 +77,12 @@
               (push (funcall fn (aref (index-cursor-vector cursor) i)) result)
               (funcall fn (aref (index-cursor-vector cursor) i))))
     (nreverse result)))
-
+  
 (defstruct index                        ; make-index
   name                                  ; index-name
   table                                 ; index-table
   test                                  ; index-test
-  locks)                                ; index-locks  
+  locks)                                ; index-locks
 
 ;;(defun make-hierarchical-index (&key name (test 'idx-equal))
 (defun make-hierarchical-index (&key name (test 'eql))
@@ -98,8 +96,9 @@
     ;; (hcl:with-hash-table-locked (ht)
     (sb-ext:with-locked-hash-table (ht)
       (maphash #'(lambda (k v) 
-                   (declare (ignore v)) 
-                   (push k keys)) ht))
+                   (declare (ignore v))
+                   (push k keys))
+               ht))
     keys))
 
 (defun fetch-all-leaves (ht)
@@ -111,10 +110,9 @@
 			      (declare (ignore k))
 			      (typecase v
 				(hash-table (fetch-all v))
-				(list 
-				 (dolist (leaf v) 
-				   (vector-push-extend leaf leaves)))
-				(t (vector-push-extend v leaves))))
+				(list       (dolist (leaf v)
+                                              (vector-push-extend leaf leaves)))
+				(t          (vector-push-extend v leaves))))
 			  ht1))))
       (fetch-all ht))
     (if (> (length leaves) 0)
@@ -141,7 +139,7 @@
 			   (if (null (rest keys))
 			       (progn
 				 (when return-values?
-                                   ;; (hcl:with-hash-table-locked (value)
+                                   ;; LispWorks hcl:with-hash-table-locked hash-table &body body => results
 				   (sb-ext:with-locked-hash-table (value)
 				     (maphash #'(lambda (k v) 
 						  (declare (ignore k)) 
@@ -182,11 +180,12 @@
 ;; (vector-push-extend 'bubba (make-array 0 :fill-pointer 0)) => 0
 (defun get-from-index (index &rest keys)
   (let ((result (descend-ht (index-table index) keys)))
-    (cond ((null result) 
-	   (make-index-cursor :index index :vector #() :pointer 0))
-	  ((vectorp result) 
-	   (make-index-cursor :index index :vector result :pointer 0))
-	  (t result))))
+    (cond ((null result)
+           (make-index-cursor :index index :vector #() :pointer 0))
+	  ((vectorp result)
+           (make-index-cursor :index index :vector result :pointer 0))
+	  (t
+           result))))
 
 (defun find-or-create-ht (ht keys create-fn &optional (d 0))
   (assert (not (null keys)) nil "keys must be non-null.")
@@ -213,18 +212,13 @@
                                                        :test (index-test index))))))
     (setf (gethash (car (last keys)) ht) value)))
 
-;; :NOTE What happens if some indexes are allowed to have weak references?
-;; Wouldn't this allow non-referenced key/values to delete silently?
-;; And if so, would weak hashes provide some of the (as yet unimplemented)
-;; features of `delete-from-index'?
 (defun delete-from-index (index value &rest keys)
   ;; FIXME: implement
   (declare (ignore index value keys)))
 
 (defun check-index ()
-  (maphash #'(lambda (k v) 
-               (format t "~A: ~A~%" k (type-of k))) 
-	   (gethash :posgi-idx (vivace-graph-v2::index-table (main-idx *store*))))) 
+  (maphash #'(lambda (k v) (format t "~A: ~A~%" k (type-of k))) 
+	   (gethash :posgi-idx (vivace-graph-v2::index-table (main-idx *store*)))))
 
 (defun get-table-to-lock (idx &rest keys)
   (find-or-create-ht (index-table idx)
@@ -236,9 +230,8 @@
 (defmacro with-locked-index ((idx &rest keys) &body body)
   (if keys
       (with-gensyms (sub-idx last-key)
-	`(multiple-value-bind (,sub-idx ,last-key) 
-	     (get-table-to-lock ,idx ,@keys)
-           ;; (hcl:with-hash-table-locked (,sub-idx)
+	`(multiple-value-bind (,sub-idx ,last-key) (get-table-to-lock ,idx ,@keys)
+           ;; `(hcl:with-hash-table-locked (,sub-idx))
 	   (sb-ext:with-locked-hash-table (,sub-idx)
 	     ;;(format t "Locked ht ~A / ~A~%" ,last-key ,sub-idx)
 	     ,@body)))
@@ -246,7 +239,6 @@
       `(sb-ext:with-locked-hash-table ((index-table ,idx))
 	 ,@body)))
 
-;; (test-index)
 (defun test-index ()
   (let ((index (make-hierarchical-index :test 'equal)))
     (add-to-index index "abc" "a" "b" "c")
@@ -259,4 +251,3 @@
     (add-to-index index "bcy" "b" "c" "y")
     ;; (get-from-index index "b" "c")
     (get-from-index index "a" "b")))
-    
