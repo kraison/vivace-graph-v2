@@ -6,9 +6,12 @@
   pointer)                              ; index-cursor-pointer
 
 (defgeneric idx-equal (a b)
-  (:method ((a string) (b string)) (string= a b))
-  (:method ((a number) (b number)) (= a b))
-  (:method ((a symbol) (b symbol)) (eq a b))
+  (:method ((a string) (b string)) 
+    (string= a b))
+  (:method ((a number) (b number))
+    (= a b))
+  (:method ((a symbol) (b symbol))
+    (eq a b))
   ;; :NOTE Prior to evaluting `cl:every' for vectors A and B
   ;; It may be useful to first test: 
   ;;  `cl:array-element-type' and `cl:upgraded-array-element-type'   -- MON
@@ -61,17 +64,18 @@
       nil)))
 
 (defun cursor-close (cursor)
-  (setf (index-cursor-index cursor) nil
-	(index-cursor-vector cursor) nil
+  (setf (index-cursor-index   cursor) nil
+	(index-cursor-vector  cursor) nil
 	(index-cursor-pointer cursor) nil))
 
 (defun map-cursor (fn cursor &key collect?)
   (setf (index-cursor-pointer cursor) 0)
   (let ((result ()))
-    (loop for i from 0 to (1- (length (index-cursor-vector cursor))) do
-	 (if collect?
-	     (push (funcall fn (aref (index-cursor-vector cursor) i)) result)
-	     (funcall fn (aref (index-cursor-vector cursor) i))))
+    (loop 
+       for i from 0 to (1- (length (index-cursor-vector cursor)))
+       do (if collect?
+              (push (funcall fn (aref (index-cursor-vector cursor) i)) result)
+              (funcall fn (aref (index-cursor-vector cursor) i))))
     (nreverse result)))
   
 (defstruct index                        ; make-index
@@ -135,7 +139,7 @@
 			   (if (null (rest keys))
 			       (progn
 				 (when return-values?
-                                   ;; (hcl:with-hash-table-locked (value)
+                                   ;; LispWorks hcl:with-hash-table-locked hash-table &body body => results
 				   (sb-ext:with-locked-hash-table (value)
 				     (maphash #'(lambda (k v) 
 						  (declare (ignore k)) 
@@ -195,7 +199,10 @@
 	((= 1 (length (rest keys)))
 	 (values (gethash (first keys) ht) (first (rest keys))))
 	(t
-	 (find-or-create-ht (gethash (first keys) ht) (rest keys) create-fn (1+ d)))))
+	 (find-or-create-ht (gethash (first keys) ht)
+                            (rest keys)
+                            create-fn
+                            (1+ d)))))
 
 (defun add-to-index (index value &rest keys)
   (let ((ht (find-or-create-ht (index-table index) 
@@ -224,14 +231,13 @@
   (if keys
       (with-gensyms (sub-idx last-key)
 	`(multiple-value-bind (,sub-idx ,last-key) (get-table-to-lock ,idx ,@keys)
-           ;; (hcl:with-hash-table-locked (,sub-idx)
+           ;; `(hcl:with-hash-table-locked (,sub-idx))
 	   (sb-ext:with-locked-hash-table (,sub-idx)
 	     ;;(format t "Locked ht ~A / ~A~%" ,last-key ,sub-idx)
 	     ,@body)))
       ;; `(hcl:with-hash-table-locked ((index-table ,idx))
       `(sb-ext:with-locked-hash-table ((index-table ,idx))
 	 ,@body)))
-
 
 (defun test-index ()
   (let ((index (make-hierarchical-index :test 'equal)))
@@ -243,4 +249,5 @@
     (add-to-index index "aby" "a" "b" "y")
     (add-to-index index "acy" "a" "c" "y")
     (add-to-index index "bcy" "b" "c" "y")
+    ;; (get-from-index index "b" "c")
     (get-from-index index "a" "b")))
