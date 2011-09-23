@@ -168,9 +168,7 @@
 		    (values (make-array 1 :initial-element value) t)))
 	    (values nil nil)))))
 
-
-
-;; :NOTE Shouldn't the `make-index-cursor' when result is null be: 
+;; :NOTE Shouldn't the `make-index-cursor' when local var RESULT is null be: 
 ;;   (make-array 0 :fill-pointer 0) instead of #()?
 ;; (type-of #()) => (simple-vector 0)
 ;; (type-of (make-array 0 :fill-pointer 0)) => (and (vector t 0) (not simple-array))
