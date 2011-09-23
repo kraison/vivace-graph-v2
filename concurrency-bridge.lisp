@@ -130,5 +130,8 @@
 (defun concurrent-queue-empty-p (queue)
   (sb-concurrency:queue-empty-p queue))
 
+
+;; (bt:join-thread (logger-thread store))
+
 ;;; ==============================
 ;;; EOF

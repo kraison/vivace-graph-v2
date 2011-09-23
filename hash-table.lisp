@@ -100,6 +100,7 @@
   #-sbcl 'boolean ;; what else might we specify here ???
   #+sbcl 'sb-thread::spinlock)
 
+;; :TODO Lispworks provides a compare-and-swap -- what is it?
 ;; Make compare-and-swap shorter to call
 (defmacro cas (place old new)
   `(sb-ext:compare-and-swap ,place ,old ,new))
@@ -298,7 +299,6 @@
   (declare (hash-table hash-table))
   (if (vg-current-thread-spinlock-value-check hash-table)
       (vg-release-spinlock (vg-get-hash-table-spinlock hash-table))))
-
 
 ;; Keyword SIZE defaults to value of `SB-IMPL::+MIN-HASH-TABLE-SIZE+'.
 ;; Where the SIZE of the generated table is know It is likely that specifying a
