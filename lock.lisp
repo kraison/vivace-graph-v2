@@ -105,7 +105,7 @@
   (lock (make-recursive-lock))
   ;; (queue (sb-concurrency:make-queue))
   (queue (concurrent-make-queue))
-  (acquired-locks (make-hash-table :synchronized t))
+  (acquired-locks (vg-make-hash-table :synchronized t))
   (size 20))
 
 (defun make-lock-pool (size)
