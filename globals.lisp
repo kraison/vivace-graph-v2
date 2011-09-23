@@ -2,11 +2,11 @@
 
 (defparameter *graph-words* (find-package "GRAPH-WORDS"))
 
-(defparameter *literals*    (make-hash-table :synchronized t :test 'equalp))
-(defparameter *nodes*       (make-hash-table :synchronized t :test 'equalp))
+(defparameter *literals*    (vg-make-hash-table :synchronized t :test 'equalp))
+(defparameter *nodes*       (vg-make-hash-table :synchronized t :test 'equalp))
 
 (defparameter *store* nil)
-(defparameter *store-table* (make-hash-table :synchronized t :test 'eql))
+(defparameter *store-table* (vg-make-hash-table :synchronized t :test 'eql))
 
 
 ;; IMHO the null-uuid is basically a thing that exists b/c it has to otherwise
@@ -34,7 +34,7 @@
 
  
 
-(defparameter *namespaces* (make-hash-table :synchronized t :test 'equalp))
+(defparameter *namespaces* (vg-make-hash-table :synchronized t :test 'equalp))
 
 (defparameter *read-uncommitted* t)
 
@@ -89,6 +89,6 @@
 
 (defvar *functor* nil)
 
-(defvar *prolog-global-functors* (make-hash-table :synchronized t))
+(defvar *prolog-global-functors* (vg-make-hash-table :synchronized t))
 
-(defvar *user-functors*          (make-hash-table :synchronized t :test 'eql))
+(defvar *user-functors*          (vg-make-hash-table :synchronized t :test 'eql))
