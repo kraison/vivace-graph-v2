@@ -67,7 +67,7 @@
               "some simple examples" :hr ""
               nil t  (list :s :p :o :c) #(1 2 3 4) :foo *package* (make-instance 'standard-object) 
               "" "multiple value examples" :hr ""
-              (values) (gethash 'x (make-hash-table)) (values (+ 3 4) (+ 2 3)) :ff))))
+              (values) (gethash 'x (vg-make-hash-table)) (values (+ 3 4) (+ 2 3)) :ff))))
 
 ;; ===============================================================================================
 ;; some simple examples
@@ -85,7 +85,7 @@
 ;; ------------------------------------------------------------
 ;; 
 ;;   (VALUES) => [returned 0 values]
-;;   (GETHASH 'X (MAKE-HASH-TABLE)) => NIL; NIL
+;;   (GETHASH 'X (VG-MAKE-HASH-TABLE)) => NIL; NIL
 ;;   (VALUES (+ 3 4) (+ 2 3)) => 7; 5
 ;;
 ;; ===============================================================================================

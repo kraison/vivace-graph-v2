@@ -1,6 +1,6 @@
 (in-package #:vivace-graph-v2)
 
-(defvar *prolog-global-functors* (make-hash-table :synchronized t :test 'equalp))
+(defvar *prolog-global-functors* (vg-make-hash-table :synchronized t :test 'equalp))
 
 (defmacro def-global-prolog-functor (name lambda-list &body body)
   `(prog1
