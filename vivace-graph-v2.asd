@@ -22,12 +22,15 @@
 	       :salza2
 	       :chipz
 	       ;; :hunchentoot    ;; not currently in use AFAICT
-	       :uuid
+	       ;; :uuid
+               :unicly
 	       :ieee-floats
 	       :local-time
 	       :date-calc
 	       :parse-number
 	       :split-sequence
+               :cl-ppcre           ;; required by `uri?' in utilities.lisp
+               :puri               ;; requred by btree.lisp 
 	       ;; :py-configparser ;; not currently in use AFAICT
 	       ;; :cl-js           ;; not currently in use AFAICT
 	       ;; :cl-json         ;; not currently in use AFAICT 
@@ -39,7 +42,7 @@
                (:file "concurrency-bridge" :depends-on ("vivace-graph-v2-package"))
 	       (:file "conditions"         :depends-on ("vivace-graph-v2-package"))
 	       (:file "constants"          :depends-on ("conditions"))
-	       (:file "globals"            :depends-on ("constants"))
+	       (:file "globals"            :depends-on ("constants" "hash-table"))
 	       (:file "utilities"          :depends-on ("globals"))
 	       (:file "compare"            :depends-on ("vivace-graph-v2-package"))
                (:file "queue"              :depends-on ("vivace-graph-v2-package"))
@@ -49,7 +52,7 @@
 	       (:file "serialize"          :depends-on ("data-types"))
 	       (:file "deserialize"        :depends-on ("serialize"))
                (:file "btree"              :depends-on ("deserialize")) 
-               (:file "table"              :depends-on ("btree")) 
+               ;; (:file "table"              :depends-on ("btree")) 
 	       (:file "index"              :depends-on ("deserialize"))
 	       (:file "transaction"        :depends-on ("index"))
 	       (:file "full-text-index"    :depends-on ("transaction"))

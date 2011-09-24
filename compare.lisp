@@ -186,8 +186,11 @@ this for new types that will be stored in the db.")
     (= (timestamp-to-universal x) y))
   (:method ((x integer) (y timestamp))
     (= (timestamp-to-universal y) x))
-  (:method ((x triple) (y triple))
-    (triple-equal x y))
+
+  ;; defined in triples.lisp
+  ;; (:method ((x triple) (y triple))
+  ;;   (triple-equal x y))
+
   ;; (:method ((x uuid:uuid) (y uuid:uuid)) (vg-uuid:uuid-eql x y))
   (:method ((x unicly:unique-universal-identifier) (y unicly:unique-universal-identifier))
     (vg-uuid:uuid-eql x y))

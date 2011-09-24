@@ -28,7 +28,8 @@
 (defun sxhash-idx (item) 
   (sxhash item))
 
-;; :WAS (sb-ext:define-hash-table-test idx-equal sxhash-idx)
+;; :WAS 
+;; (sb-ext:define-hash-table-test idx-equal sxhash-idx)
 (vg-define-hash-table-test idx-equal sxhash-idx)
 
 ;(defun make-idx-table (&key synchronized)
@@ -223,8 +224,9 @@
 
 (defun check-index ()
   (maphash #'(lambda (k v) 
+               (declare (ignore v))
                (format t "~A: ~A~%" k (type-of k))) 
-	   (gethash :posgi-idx (vivace-graph-v2::index-table (main-idx *store*))))) 
+	   (gethash :posgi-idx (vivace-graph-v2::index-table (main-idx *store*)))))
 
 (defun get-table-to-lock (idx &rest keys)
   (find-or-create-ht (index-table idx)
@@ -259,4 +261,4 @@
     (add-to-index index "bcy" "b" "c" "y")
     ;; (get-from-index index "b" "c")
     (get-from-index index "a" "b")))
-    
+

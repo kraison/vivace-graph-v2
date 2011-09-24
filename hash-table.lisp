@@ -88,6 +88,22 @@
                         vg-unix-interrupts-check
                         vg-release-spinlock))
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+
+(defmacro defconst (name value &optional doc)
+  `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
+     ,@(when doc (list doc))))
+)
+
+(defconst +sleep-time-for-spin+ 0.000000001
+  "Floating point time to cl:sleep when spinlock-ing.~%
+:SEE `vg-get-spinlock', `get-pool-lock'")
+
+;; :TODO Lispworks provides a compare-and-swap -- what is it?
+;; Make compare-and-swap shorter to call
+(defmacro cas (place old new)
+  `(sb-ext:compare-and-swap ,place ,old ,new))
+
 (deftype vg-thread ()
   #-sbcl 'bordeaux-threads:thread
   #+sbcl 'sb-thread:thread)
@@ -99,11 +115,6 @@
 (deftype vg-spinlock ()
   #-sbcl 'boolean ;; what else might we specify here ???
   #+sbcl 'sb-thread::spinlock)
-
-;; :TODO Lispworks provides a compare-and-swap -- what is it?
-;; Make compare-and-swap shorter to call
-(defmacro cas (place old new)
-  `(sb-ext:compare-and-swap ,place ,old ,new))
 
 #-sbcl
 (defun vg-get-spinlock-value (spinlock)
@@ -300,10 +311,10 @@
   (if (vg-current-thread-spinlock-value-check hash-table)
       (vg-release-spinlock (vg-get-hash-table-spinlock hash-table))))
 
-(defun vg-define-hash-table-test (name hash-function)
+(defmacro vg-define-hash-table-test (name hash-function)
   ;; (sb-ext:define-hash-table-test idx-equal sxhash-idx)
   #-:sbcl (error "not implemented -- what is equivalent of `sb-ext:define-hash-table-test'?")
-  #+:sbcl (sb-ext:define-hash-table-test name hash-function))
+  #+:sbcl `(sb-ext:define-hash-table-test ,name ,hash-function))
 
 ;; Keyword SIZE defaults to value of `SB-IMPL::+MIN-HASH-TABLE-SIZE+'.
 ;; Where the SIZE of the generated table is know It is likely that specifying a
