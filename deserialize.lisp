@@ -148,8 +148,7 @@
   ;;             ((= i 15) (setf (aref array 10) byte))
   ;;             (t        (setf (aref array i) byte)))))
   ;;   (unicly::uuid-from-byte-array array)))
-  (vg-uuid::deserialize-uuid (stream)))
-
+  (vg-uuid::deserialize-uuid stream))
 
 (defun deserialize-triple-slot (stream)
   (let* ((type-byte (read-byte stream))

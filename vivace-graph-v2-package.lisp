@@ -68,7 +68,7 @@
 	   #:cf
 	   #:triple-eql
 	   #:triple-equal
-	   #:make-anonymous-node
+
 	   #:add-triple
 	   #:get-triples
 	   #:get-triples-list

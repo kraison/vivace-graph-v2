@@ -111,7 +111,7 @@
   (sb-concurrency:receive-message mailbox))
 
 #+sbcl
-(defun concurrent-receive-pending-message (mailbox &optional n)
+(defun concurrent-receive-pending-messages (mailbox &optional n)
   (sb-concurrency:receive-pending-messages mailbox n))
 
 #+sbcl

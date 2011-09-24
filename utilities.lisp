@@ -27,12 +27,22 @@
 (defun ip-to-string (ip)
   (format nil "~A.~A.~A.~A" (aref ip 0) (aref ip 1) (aref ip 2) (aref ip 3)))
 
+;; :NOTE This function currently has one caller - `display-namespaces' but
+;; introduces a dependency on CL-PPCRE which AFAICT does not otherwise exist.
+;; Also, if we wind up using PURI, then I would imagine this function is
+;; redundant and should make use of a PURI feature instead.  Finally, I think
+;; this function is _really_ poorly named, my impression is that a URI also
+;; includes URNs and resources like file:// as well... 
+;; (disregarding VGs prolific use of #\? as a character in predicate (or
+;; predicate like) function names which is in general very Schemey and not a
+;; very CL like thing to do) -- MON
 (defun uri? (string)
   (cl-ppcre:scan "^(https?|ftp)\:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(\/.*)?$" string))
 
 (defun make-slot-key (id slot)
   (format nil "~A~A~A" id #\Nul slot))
 
+;; Why not use SPLIT-SEQUENCE instead?
 ;; String split without regexes.
 (defun split (string &optional (ws '(#\Space #\Tab)) max)
   "Split STRING along whitespace as defined by the sequence WS.

@@ -4,8 +4,22 @@
 
 (in-package #:vivace-graph-v2)
 
+
 ;;; ==============================
-;;;  vivace-graph-v2/utilities.lisp
+;;; uuid-bridge.lisp
+;;; ==============================
+
+(fundoc 'vg-uuid::make-anonymous-node
+  "Create a unique anonymous node identifier.~%~@
+Return value is a string of the form:~%
+ \"_anon:<UUID>\"~%~@
+:EXAMPLE~%~@
+ { ... <EXAMPLE> ... } ~%~@
+:SEE-ALSO `deftemplate'.~%")
+
+
+;;; ==============================
+;;; vivace-graph-v2/utilities.lisp
 ;;; ==============================
 
 (fundoc 'symbol-nstring-upcase
@@ -54,14 +68,6 @@ When THING is of some other type an error is signaled.~%~@
 ;;; vivace-graph-v2/triples.lisp
 ;;; ==============================
 
-(fundoc 'make-anonymous-node
-  "Create a unique anonymous node identifier.~%~@
-Return value is a string of the form:~%
- \"_anon:<UUID>\"~%~@
-:EXAMPLE~%~@
- { ... <EXAMPLE> ... } ~%~@
-:SEE-ALSO `deftemplate'.~%")
-
 (fundoc 'get-triples
         "Return a cursor to the result.~%~@
 Keyword G defaults to `*graph*'.~%~@
@@ -100,8 +106,6 @@ Print output dependent on value of `*print-triple-details*'.~%")
 
 (fundoc 'triple-persistent?
 "Whether INSTANCE of the structure triple is persitent in the triple-store.~%")
-
-
 
 
 

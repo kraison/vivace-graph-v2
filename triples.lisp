@@ -13,6 +13,9 @@
 	 (equal (triple-object t1)    (triple-object t2))))
   (:method (t1 t2) nil))
 
+(defmethod vg-equal ((x triple) (y triple))
+  (triple-equal x y))
+
 (defgeneric triple-equalp (t1 t2)
   (:method ((t1 triple) (t2 triple)) 
     (and (triple-equal t1 t2)
@@ -325,7 +328,7 @@
   (let ((triple-count 0))
     (with-locked-index ((main-idx store))
       (maphash #'(lambda (id triple)
-                   ;; (declare (ignorable id))
+                   (declare (ignore id))
 		   (when (not (deleted? triple)) (incf triple-count)))
 	       (gethash :id-idx (index-table (main-idx store)))))
     triple-count))
