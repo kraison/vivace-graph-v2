@@ -1,22 +1,12 @@
 (in-package #:vivace-graph-v2)
 
-;;; UUIDs
-(defun make-uuid ()
-  "Create a new UUID."
-  (uuid:make-v1-uuid))
-
-(defun sxhash-uuid (uuid) (sxhash (uuid:print-bytes nil uuid)))
-
-(sb-ext:define-hash-table-test uuid:uuid-eql sxhash-uuid)
-
-(defun make-uuid-table (&key synchronized) 
-  (make-hash-table :test 'uuid:uuid-eql :synchronized synchronized))
-
 ;;; Dates
 ;;; timestamps provided by local-time lib
 (defgeneric timestamp? (thing)
-  (:method ((thing timestamp)) t)
-  (:method (thing) nil))
+  (:method ((thing local-time:timestamp))
+    t)
+  (:method (thing) 
+    nil))
 
 ;;; Triple structure
 (defparameter *print-triple-details* nil)
@@ -30,16 +20,18 @@
       (format stream "<'~A' '~A' '~A'>" 
 	      (subject triple) (predicate triple) (object triple))))
 
+;; :NOTE `sb-ext:freeze-type'
 (defstruct (triple
 	     (:print-function print-triple)
 	     (:conc-name triple-)
 	     (:predicate triple?))
-  subject 
-  predicate 
-  object 
-  graph 
-  id 
-  (deleted? nil) 
-  (cf +cf-true+) 
-  (persistent? t))
+  subject          ;; triple-subject
+  predicate        ;; triple-predicate
+  object           ;; triple-object
+  graph            ;; triple-graph
+  id               ;; triple-id
+  (deleted? nil)   ;; triple-deleted?    type boolean
+  (cf +cf-true+)   ;; triple-cf          type float?
+  (persistent? t)) ;; triple-persistent? type boolean
+  
 

@@ -12,13 +12,14 @@
 	     (:print-function print-transaction)
 	     (:conc-name tx-)
 	     (:predicate transaction?))
-  (id (make-uuid))
-  (queue nil)
+  (id       (vg-uuid::make-v4-uuid))
+  (queue    nil)
   (rollback nil)
-  (mailbox (sb-concurrency:make-mailbox))
-  (thread (current-thread))
-  (store nil)
-  (locks nil))
+  ;; (mailbox  (sb-concurrency:make-mailbox))
+  (mailbox  (concurrent-make-mailbox))
+  (thread   (vg-current-thread))
+  (store    nil)
+  (locks    nil))
 
 (defun find-newest-snapshot (store)
   (let ((snap nil) 
@@ -161,18 +162,22 @@
 	(logger :err "Unhandled error in record-tx: ~A" c)))))
 
 (defun stop-logger (store)
-  (sb-concurrency:send-message (log-mailbox store) :shutdown)
-  (join-thread (logger-thread store)))
+  ;; (sb-concurrency:send-message (log-mailbox store) :shutdown)
+  (concurrent-send-message (log-mailbox store) :shutdown)
+  (bt:join-thread (logger-thread store)))
 
 (defun start-logger (store)
   (make-thread 
    #'(lambda ()
-       (let ((mailbox (sb-concurrency:make-mailbox)) (*file-counter* 0)
+       ;; (let ((mailbox (sb-concurrency:make-mailbox)) 
+       (let ((mailbox (concurrent-make-mailbox))
+             (*file-counter* 0)
 	     (last-snapshot (gettimeofday)))
 	 (setf (log-mailbox store) mailbox)
 	 (loop
 	    (handler-case
-		(let ((msg (sb-concurrency:receive-message mailbox)))
+		;; (let ((msg (sb-concurrency:receive-message mailbox)))
+                (let ((msg (concurrent-receive-message mailbox)))
 		  (logger :info "tx-log thread received message ~A" msg)
 		  (typecase msg
 		    (transaction (record-tx msg store))
@@ -185,9 +190,8 @@
 			(quit))
 		       (:shutdown 
 			(logger :info "Processing all pending messages.")
-			(dolist 
-			    (msg 
-			      (sb-concurrency:receive-pending-messages mailbox))
+                        ;; (dolist (msg (sb-concurrency:receive-pending-messages mailbox))
+                        (dolist (msg (concurrent-receive-pending-messages mailbox))
 			  (logger :info "Processing message ~A" msg)
 			  (when (transaction? msg)
 			    (record-tx msg store)))
@@ -214,6 +218,7 @@
    :name (format nil "tx-log thread for ~A" store)))
 
 (defun release-all-locks (tx)
+  ;; LispWorks hcl:with-hash-table-locked hash-table &body body => results
   (sb-ext:with-locked-hash-table ((locks *store*))
     (dolist (pair (tx-locks tx))
       (destructuring-bind (pattern-or-triple lock kind) pair
@@ -263,8 +268,8 @@
 	    (logger :info "~A execute-tx success (~A)" 
 		    *current-transaction* result)
 	    (when (tx-queue *current-transaction*)
-	      (sb-concurrency:send-message 
-	       (log-mailbox store) *current-transaction*))
+	      ;; (sb-concurrency:send-message (log-mailbox store) *current-transaction*))
+              (concurrent-send-message (log-mailbox store) *current-transaction*))
 	    (release-all-locks *current-transaction*)
 	    result)))))
 
