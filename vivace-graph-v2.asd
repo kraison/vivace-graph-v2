@@ -27,14 +27,17 @@
 	       :split-sequence
 	       :py-configparser
 	       :cl-js
-	       :cl-json)
+	       :cl-json
+               :montezuma)
   :components ((:file "uuid")
+               (:file "montezuma")
 	       #+sbcl (:file "sb-impl")
 	       #+sbcl (:file "sb-thread")
-	       (:file "vivace-graph-v2-package" :depends-on ("uuid"))
-	       (:file "hash-table" 
-		      :depends-on ("vivace-graph-v2-package" 
-				   "sb-impl" 
+	       (:file "vivace-graph-v2-package"
+                      :depends-on ("uuid" "montezuma"))
+	       (:file "hash-table"
+		      :depends-on ("vivace-graph-v2-package"
+				   "sb-impl"
 				   "sb-thread"))
 	       (:file "gettimeofday" :depends-on ("vivace-graph-v2-package"))
 	       (:file "conditions" :depends-on ("vivace-graph-v2-package"))

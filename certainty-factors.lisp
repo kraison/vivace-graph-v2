@@ -16,7 +16,8 @@
 
 ;;; File: certainty-factors.lisp
 
-;;; Description: An implementation of Certainty Factors as found in Peter Norvig's PAIP.
+;;; Description: An implementation of Certainty Factors as found in Peter
+;;; Norvig's PAIP.
 
 ;;; Modified for VivaceGraph by Keivn Raison, 2010
 
@@ -108,12 +109,13 @@
         ((> cf 0.5) "suggestive evidence")
         ((> cf 0.0) "weakly suggestive evidence")
         ((= cf 0.0) "no evidence either way")
-        ((< cf 0.0) (concatenate 'string (cf->english (- cf)) 
+        ((< cf 0.0) (concatenate 'string (cf->english (- cf))
 				 " against the conclusion"))))
 
 ;;; interface into the generic belief system.
 
-(defmethod adjust-belief (objects (rule-belief number) &optional (old-belief nil))
+(defmethod adjust-belief (objects (rule-belief number) &optional
+                          (old-belief nil))
   (recalculate-cf objects rule-belief old-belief))
 
 (defmethod adjust-belief (objects (rule-belief t) &optional old-belief)

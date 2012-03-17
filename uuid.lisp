@@ -27,16 +27,17 @@
   (:documentation "Equality check for UUIDs."))
 
 (defun serialize-uuid (uuid stream)
-  (with-slots 
-	(time-low time-mid time-high-and-version clock-seq-and-reserved clock-seq-low 
-		  node)
+  (with-slots
+	(time-low time-mid time-high-and-version clock-seq-and-reserved
+                  clock-seq-low node)
       uuid
     (loop for i from 3 downto 0
        do (write-byte (ldb (byte 8 (* 8 i)) time-low) stream))
     (loop for i from 5 downto 4
        do (write-byte (ldb (byte 8 (* 8 (- 5 i))) time-mid) stream))
     (loop for i from 7 downto 6
-       do (write-byte (ldb (byte 8 (* 8 (- 7 i))) time-high-and-version) stream))
+       do (write-byte (ldb (byte 8 (* 8 (- 7 i))) time-high-and-version)
+                      stream))
     (write-byte (ldb (byte 8 0) clock-seq-and-reserved) stream)
     (write-byte (ldb (byte 8 0) clock-seq-low) stream)
     (loop for i from 15 downto 10
@@ -48,25 +49,28 @@
       (let ((array (make-array 18 :element-type '(unsigned-byte 8))))
 	(setf (aref array 0) type-specifier)
 	(setf (aref array 1) 16)
-	(with-slots 
-	      (time-low time-mid time-high-and-version clock-seq-and-reserved 
+	(with-slots
+	      (time-low time-mid time-high-and-version clock-seq-and-reserved
 			clock-seq-low node)
 	    uuid
 	  (loop for i from 3 downto 0
-	     do (setf (aref array (+ 2 (- 3 i))) (ldb (byte 8 (* 8 i)) time-low)))
+	     do (setf (aref array (+ 2 (- 3 i)))
+                      (ldb (byte 8 (* 8 i)) time-low)))
 	  (loop for i from 5 downto 4
-	     do (setf (aref array (+ 2 i)) (ldb (byte 8 (* 8 (- 5 i))) time-mid)))
+	     do (setf (aref array (+ 2 i))
+                      (ldb (byte 8 (* 8 (- 5 i))) time-mid)))
 	  (loop for i from 7 downto 6
-	     do (setf (aref array (+ 2 i)) (ldb (byte 8 (* 8 (- 7 i))) 
+	     do (setf (aref array (+ 2 i)) (ldb (byte 8 (* 8 (- 7 i)))
 						time-high-and-version)))
 	  (setf (aref array (+ 2 8)) (ldb (byte 8 0) clock-seq-and-reserved))
 	  (setf (aref array (+ 2 9)) (ldb (byte 8 0) clock-seq-low))
 	  (loop for i from 15 downto 10
-	     do (setf (aref array (+ 2 i)) (ldb (byte 8 (* 8 (- 15 i))) node)))
+	     do (setf (aref array (+ 2 i))
+                      (ldb (byte 8 (* 8 (- 15 i))) node)))
 	  array))
       (let ((array (make-array 16 :element-type '(unsigned-byte 8))))
-	(with-slots 
-	      (time-low time-mid time-high-and-version clock-seq-and-reserved 
+	(with-slots
+	      (time-low time-mid time-high-and-version clock-seq-and-reserved
 			clock-seq-low node)
 	    uuid
 	  (loop for i from 3 downto 0
@@ -74,7 +78,7 @@
 	  (loop for i from 5 downto 4
 	     do (setf (aref array i) (ldb (byte 8 (* 8 (- 5 i))) time-mid)))
 	  (loop for i from 7 downto 6
-	     do (setf (aref array i) (ldb (byte 8 (* 8 (- 7 i))) 
+	     do (setf (aref array i) (ldb (byte 8 (* 8 (- 7 i)))
 					  time-high-and-version)))
 	  (setf (aref array 8) (ldb (byte 8 0) clock-seq-and-reserved))
 	  (setf (aref array 9) (ldb (byte 8 0) clock-seq-low))

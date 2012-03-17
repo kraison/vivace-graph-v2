@@ -1,6 +1,7 @@
 (in-package #:vivace-graph-v2)
 
-(defvar *prolog-global-functors* (make-hash-table :synchronized t :test 'equalp))
+(defvar *prolog-global-functors*
+  (make-hash-table :synchronized t :test 'equalp))
 
 (defmacro def-global-prolog-functor (name lambda-list &body body)
   `(prog1
@@ -17,7 +18,7 @@
 (def-global-prolog-functor write/1 (exp cont)
   (format t "~A" (deref-exp exp)) (funcall cont))
 
-(def-global-prolog-functor nl/0 (cont) 
+(def-global-prolog-functor nl/0 (cont)
   (terpri) (funcall cont))
 
 (def-global-prolog-functor repeat/0 (cont)
@@ -31,7 +32,7 @@
   "Unifies two prolog variables."
   (if (unify ?arg1 ?arg2) (funcall cont)))
 
-(def-global-prolog-functor ==/2 (?arg1 ?arg2 cont)	       
+(def-global-prolog-functor ==/2 (?arg1 ?arg2 cont)
   "Checks equality of the values of two prolog variables."
   (if (deref-equal ?arg1 ?arg2) (funcall cont)))
 
@@ -41,34 +42,34 @@
 
 (def-global-prolog-functor >/2 (?arg1 ?arg2 cont)
   "Prolog greater than functor."
-  (if (or (and (numberp (var-deref ?arg1)) (numberp (var-deref ?arg2)) 
-	       (> ?arg1 ?arg2)) 
+  (if (or (and (numberp (var-deref ?arg1)) (numberp (var-deref ?arg2))
+	       (> ?arg1 ?arg2))
 	  (and (timestamp? (var-deref ?arg1)) (timestamp? (var-deref ?arg2))
 	       (timestamp> ?arg1 ?arg2)))
       (funcall cont)))
 
 (def-global-prolog-functor </2 (?arg1 ?arg2 cont)
   "Prolog less than functor."
-  (if (or (and (numberp (var-deref ?arg1)) (numberp (var-deref ?arg2)) 
+  (if (or (and (numberp (var-deref ?arg1)) (numberp (var-deref ?arg2))
 	       (< ?arg1 ?arg2))
 	  (and (timestamp? (var-deref ?arg1)) (timestamp? (var-deref ?arg2))
 	       (timestamp< ?arg1 ?arg2)))
       (funcall cont)))
 
-(def-global-prolog-functor >=/2 (?arg1 ?arg2 cont)	      
+(def-global-prolog-functor >=/2 (?arg1 ?arg2 cont)
   "Prolog greater than or equal to functor."
-  (if (or (and (numberp (var-deref ?arg1)) 
-	       (numberp (var-deref ?arg2)) 
-	       (>= ?arg1 ?arg2)) 
+  (if (or (and (numberp (var-deref ?arg1))
+	       (numberp (var-deref ?arg2))
+	       (>= ?arg1 ?arg2))
 	  (and (timestamp? (var-deref ?arg1)) (timestamp? (var-deref ?arg2))
 	       (timestamp>= ?arg1 ?arg2)))
       (funcall cont)))
 
 (def-global-prolog-functor <=/2 (?arg1 ?arg2 cont)
   "Prolog less than or equal to functor."
-  (if (or (and (numberp (var-deref ?arg1)) 
-	       (numberp (var-deref ?arg2)) 
-	       (<= ?arg1 ?arg2)) 
+  (if (or (and (numberp (var-deref ?arg1))
+	       (numberp (var-deref ?arg2))
+	       (<= ?arg1 ?arg2))
 	  (and (timestamp? (var-deref ?arg1)) (timestamp? (var-deref ?arg2))
 	       (timestamp<= ?arg1 ?arg2)))
       (funcall cont)))
@@ -81,30 +82,31 @@
 ;    (funcall cont)))
 
 (def-global-prolog-functor lisp/2 (?result exp cont)
-  "Call out to lisp from within a Prolog query.  Assigns result to the supplied 
-Prolog var.  (lisp ?result (+ 1 2)).  Any lisp variables that you wish to access
-within a prolog query using the lisp functor should be declared special."
+  "Call out to lisp from within a Prolog query.  Assigns result to the
+ supplied Prolog var.  (lisp ?result (+ 1 2)).  Any lisp variables that you
+ wish to access within a prolog query using the lisp functor should be
+ declared special."
   (let ((exp (var-deref exp)))
     (when *prolog-trace* (format t "TRACE: LISP/2 ?result <- ~A~%" exp))
     (cond ((consp exp)
 	   (if (unify ?result (eval exp))
-	   ;;(if (unify ?result (apply (first exp) (rest exp))) 
+	   ;;(if (unify ?result (apply (first exp) (rest exp)))
 	       (funcall cont)))
 	  ((and (symbolp exp) (boundp exp))
 	   ;;(if (unify ?result (eval exp))
-	   (if (unify ?result (funcall #'symbol-value exp)) 
+	   (if (unify ?result (funcall #'symbol-value exp))
 	       (funcall cont)))
 	  (t
 	   (if (unify ?result exp)
 	       (funcall cont))))))
 
 (def-global-prolog-functor lispp/1 (exp cont)
-  "Call out to lisp from within a Prolog query and throws away the result.  Any 
-lisp variables that you wish to access within a prolog query using the lisp 
-functor should be declared special."
+  "Call out to lisp from within a Prolog query and throws away the result.
+ Any lisp variables that you wish to access within a prolog query using the
+ lisp functor should be declared special."
   (let ((exp (var-deref exp)))
     (when *prolog-trace* (format t "TRACE: LISPP/1 ~A~%" exp))
-    (cond ((consp exp) 
+    (cond ((consp exp)
 	   ;;(format t "applying ~A to ~A~%" (first exp) (rest exp))
 	   (eval exp))
 	   ;;(apply (first exp) (rest exp)))
@@ -113,9 +115,9 @@ functor should be declared special."
     (funcall cont)))
 
 (def-global-prolog-functor regex-match/2 (?arg1 ?arg2 cont)
-  "Functor that treats first arg as a regex and uses cl-ppcre:scan to check for 
-the pattern in the second arg."
-  (if (and (stringp (var-deref ?arg1)) 
+  "Functor that treats first arg as a regex and uses cl-ppcre:scan to check
+ for the pattern in the second arg."
+  (if (and (stringp (var-deref ?arg1))
 	   (stringp (var-deref ?arg2))
 	   (cl-ppcre:scan ?arg1 ?arg2))
       (funcall cont)))
@@ -133,13 +135,14 @@ the pattern in the second arg."
   "Call a prolog form."
   (var-deref goal)
   (let* ((functor (make-functor-symbol (first goal) (length (args goal)))))
-    (let ((fn (or (gethash functor *user-functors*) 
+    (let ((fn (or (gethash functor *user-functors*)
 		  (gethash functor *prolog-global-functors*))))
       (if (functionp fn)
 	  (apply fn (append (args goal) (list cont)))
-	  (error 'prolog-error 
-		 :reason 
-		 (format nil "Unknown Prolog functor in call/1 ~A" functor))))))
+	  (error 'prolog-error
+		 :reason
+		 (format nil "Unknown Prolog functor in call/1 ~A"
+                         functor))))))
 
 (def-global-prolog-functor if/2 (?test ?then cont)
   (when *prolog-trace* (format t "TRACE: IF/2(~A ~A)~%" ?test ?then))
@@ -147,18 +150,18 @@ the pattern in the second arg."
 
 (def-global-prolog-functor if/3 (?test ?then ?else cont)
   (when *prolog-trace* (format t "TRACE: IF/3(~A ~A ~A)~%" ?test ?then ?else))
-  (call/1 ?test #'(lambda () 
-		    (call/1 ?then 
+  (call/1 ?test #'(lambda ()
+		    (call/1 ?then
 			    #'(lambda () (funcall cont) (return-from if/3)))))
   (call/1 ?else cont))
 
 (let ((date-regex
        "^(19|20)\\d\\d[\-\ \/\.](0[1-9]|1[012])[\-\ \/\.](0[1-9]|[12][0-9]|3[01])$"))
   (def-global-prolog-functor valid-date?/1 (date cont)
-    "Date validation functor. FIXME: This needs to be fleshed out with a more 
-comprehensive regex."
+    "Date validation functor. FIXME: This needs to be fleshed out with a
+ more comprehensive regex."
     (var-deref date)
-    (if (timestamp? date) 
+    (if (timestamp? date)
 	(funcall cont)
 	(if (and (stringp date)
 		 (cl-ppcre:scan date-regex date))
@@ -174,7 +177,7 @@ comprehensive regex."
   (funcall cont))
 
 (def-global-prolog-functor not/1 (relation cont)
-  "Prolog negation.  Does not retract, simply negates in the context of the 
+  "Prolog negation.  Does not retract, simply negates in the context of the
 query."
   (with-undo-bindings
     (call/1 relation #'(lambda () (return-from not/1 nil)))
@@ -214,10 +217,10 @@ query."
 			   (cond ((and (symbolp var)
 				       (eq graph-pkg (symbol-package var)))
 				  (symbol-name var))
-				 ((and (consp var) 
+				 ((and (consp var)
 				       (eq (first var) name)
 				       (symbolp (second var))
-				       (eq graph-pkg 
+				       (eq graph-pkg
 					   (symbol-package (second var))))
 				  (list name (symbol-name (second var))))
 				 (t var))))
@@ -226,15 +229,15 @@ query."
 
   (def-global-prolog-functor map-query/3 (fn vars collect? cont)
     (when *prolog-trace*
-      (format t "TRACE: MAP-QUERY/3 FN (~A) IS ~A~%COLLECT? is ~A~%" 
+      (format t "TRACE: MAP-QUERY/3 FN (~A) IS ~A~%COLLECT? is ~A~%"
 	      (type-of fn) fn collect?))
     (if (null vars)
 	nil
 	(let ((new-vars
-	       (loop 
+	       (loop
 		  for var in vars
 		  collect (let ((v (deref-exp var)))
-			    (if (and (symbolp v) 
+			    (if (and (symbolp v)
 				     (eq graph-pkg (symbol-package v)))
 				(symbol-name v)
 				v)))))
@@ -244,15 +247,17 @@ query."
 
 (def-global-prolog-functor q-/4 (s p o g cont)
   (when *prolog-trace* (format t "TRACE: Q-/4(~A ~A ~A ~A)~%" s p o g))
-  (let ((triples 
-	 (get-triples 
-	  :p (and (or (not (var-p p)) (and (var-p p) (bound-p p))) (var-deref p))
-	  :s (and (or (not (var-p s)) (and (var-p s) (bound-p s))) (var-deref s))
-	  :o (or (and (not (consp o)) (or (not (var-p o)) 
-					  (and (var-p o) (bound-p o))) 
+  (let ((triples
+	 (get-triples
+	  :p (and (or (not (var-p p))
+                      (and (var-p p) (bound-p p))) (var-deref p))
+	  :s (and (or (not (var-p s))
+                      (and (var-p s) (bound-p s))) (var-deref s))
+	  :o (or (and (not (consp o))
+                      (or (not (var-p o)) (and (var-p o) (bound-p o)))
 		      (var-deref o))
 		 (and (consp o) (cdr o)))
-	  :g (and (or (not (var-p g)) (and (var-p g) (bound-p g))) 
+	  :g (and (or (not (var-p g)) (and (var-p g) (bound-p g)))
 		  (var-deref g)))))
     (multiple-value-bind (s p o g) (intern-spog s p o g)
       (map-cursor #'(lambda (id)
@@ -263,7 +268,7 @@ query."
 			      (when (unify p (triple-predicate triple))
 				(when (unify s (triple-subject triple))
 				  (if (consp o)
-				      (when (unify (car o) 
+				      (when (unify (car o)
 						   (triple-object triple))
 					(funcall cont))
 				      (when (unify o (triple-object triple))
@@ -280,17 +285,19 @@ query."
   (when (consp clause)
     (setq clause (mapcar #'(lambda (c) (var-deref c)) clause))
     (when *prolog-trace* (format t "TRACE: Asserting ~A~%" clause))
-    (if (and (or (= 3 (length clause)) 
-		 (= 4 (length clause))) 
+    (if (and (or (= 3 (length clause))
+		 (= 4 (length clause)))
 	     (not (some #'var-p clause)))
-	(let ((triple (add-triple (first clause) (second clause) (third clause) 
+	(let ((triple (add-triple (first clause)
+                                  (second clause)
+                                  (third clause)
 				  (or (fourth clause) *graph*))))
-	  (when *prolog-trace* 
+	  (when *prolog-trace*
 	    (format t "TRACE: Asserted new triple ~A~%" triple))
 	  (when (triple? triple)
 	    (funcall cont)))
-	(error 'prolog-error 
-	       :reason 
+	(error 'prolog-error
+	       :reason
 	       (format nil "assert is only for triples, not ~A" clause)))))
 
 (def-global-prolog-functor subject/2 (?arg1 ?arg2 cont)
@@ -342,33 +349,33 @@ query."
   "Retract a fact from the datastore."
   (when (consp clause)
     (setq clause (mapcar #'(lambda (c) (var-deref c)) clause))
-    (if (and (or (= (length clause) 3) 
-		 (= (length clause) 4)) 
+    (if (and (or (= (length clause) 3)
+		 (= (length clause) 4))
 	     (not (some #'var-p clause)))
 	(handler-case
 	    (with-graph-transaction (*store*)
-	      (when *prolog-trace* 
+	      (when *prolog-trace*
 		(format t "TRACE: Retracting fact ~A~%" clause))
-	      (let ((triple (lookup-triple (first clause) (second clause) 
+	      (let ((triple (lookup-triple (first clause) (second clause)
 					   (third clause)
-					   (or (fourth clause) *graph*) 
+					   (or (fourth clause) *graph*)
 					   :retrieve-deleted? t)))
 		(if (triple? triple)
 		    (delete-triple triple)
-		    (error 'prolog-error 
-			   :reason 
-			   (format nil "clause ~A does not represent a fact" 
+		    (error 'prolog-error
+			   :reason
+			   (format nil "clause ~A does not represent a fact"
 				   clause)))))
 	  (prolog-error (condition)
-	    (error 'prolog-error 
+	    (error 'prolog-error
 		   :reason
 		   (format nil "Cannot retract ~A: ~A~%" clause condition)))
 	  (:no-error (result)
 	    (declare (ignore result))
 	    (funcall cont)))
-	(error 'prolog-error 
-	       :reason 
-	       (format nil "Cannot retract a clause with variables: ~A" 
+	(error 'prolog-error
+	       :reason
+	       (format nil "Cannot retract a clause with variables: ~A"
 		       clause)))))
 
 (def-global-prolog-functor is-valid/1 (item cont)

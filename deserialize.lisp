@@ -1,7 +1,7 @@
 (in-package #:vivace-graph-v2)
 
-;; The foundation of the serialization code comes from Sonja Keene's "Object-Oriented 
-;; Programming in Common Lisp."  Thanks Sonja!
+;; The foundation of the serialization code comes from Sonja Keene's
+;; "Object-Oriented  Programming in Common Lisp."  Thanks Sonja!
 
 (defgeneric deserialize (code stream))
 (defgeneric deserialize-action (code stream))
@@ -68,17 +68,17 @@
 (defmethod deserialize ((code (eql +symbol+)) stream)
   (let ((code (read-byte stream)))
     (when (and (/= +string+ code) (/= +compressed-string+ code))
-      (error 'deserialization-error :instance code :reason 
+      (error 'deserialization-error :instance code :reason
 	     "Symbol-name is not a string!"))
     (let ((symbol-name (deserialize code stream)))
       (setq code (read-byte stream))
       (when (and (/= +string+ code) (/= +compressed-string+ code))
-	(error 'deserialization-error :instance code :reason 
+	(error 'deserialization-error :instance code :reason
 	       "Symbol-package is not a string!"))
       (let* ((pkg-name (deserialize code stream))
 	     (pkg (find-package pkg-name)))
 	(when (null pkg)
-	  (error 'deserialization-error :instance code :reason 
+	  (error 'deserialization-error :instance code :reason
 		 (format nil "Symbol-package ~A does not exist!" pkg-name)))
 	(intern symbol-name pkg)))))
 

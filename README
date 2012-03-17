@@ -5,7 +5,7 @@ it to behave consistently from one check-in to another.
 
 The goal is to build a fast, robust, distributed graph database with optional
 RDF semantics built-in.  The primary query language is Prolog (based on PAIP),
-but I have plans to add Javascript and maybe Sparql at a later date.  
+but I have plans to add Javascript and maybe Sparql at a later date.
 At the moment, persistence is achieved via a call to (dump-triples);  this is going
 to change very soon.  I am working on a native SBCL memory mapped persistence
 library that will give me some variation on btrees and hashes.  When this is
@@ -36,15 +36,23 @@ To get you started:
 (in-package #:vivace-graph-v2)
 
 (create-triple-store :name "test store" :location "/var/tmp/db")
-;;(index-predicate "likes")
+(index-predicate "likes")
 (with-graph-transaction (*store*)
   (add-triple "Kevin" "is-a" "human")
   (add-triple "Joe" "is-a" "human")
   (add-triple "Fido" "is-a" "dog")
   (add-triple "Kevin" "likes" "Fido")
-  (add-triple "Kevin" "likes" "Joe"))
+  (add-triple "Kevin" "likes" "Joe")
+  (add-triple "Joe" "likes" "programming lisp")
+  (add-triple "Kevin" "likes" "programming lisp")
+  (add-triple "Kevin" "likes" "programming perl")
+  (add-triple "Kevin" "likes" "programming c"))
+
 (select (?x ?y) (q- ?x "likes" ?y))
-;; Range query;  this stuff may be broken at this stage.  
+
+(get-triples-list :search-string "programming")
+
+;; Range query;  this stuff may be broken at this stage.
 ;; i will focus on it again very soon
 ;;(select-flat (?object) (q- "Kevin" "likes" (?object "a" "z")))
 ;;
@@ -59,5 +67,3 @@ To get you started:
 (get-triples-list :s "Kevin")
 (get-triples-list :p "is-a")
 (close-triple-store :store *store*)
-
-

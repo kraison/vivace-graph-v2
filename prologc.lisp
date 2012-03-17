@@ -1,4 +1,4 @@
-;;;; This is Kevin Raison's customization of Mr. Norvig's PAIP Prolog.  
+;;;; This is Kevin Raison's customization of Mr. Norvig's PAIP Prolog.
 ;;;; Thanks Mr. Norvig!
 ;;;; Copyright (c) 1991 Peter Norvig, (c) 2010 Kevin Raison
 (in-package #:vivace-graph-v2)
@@ -27,8 +27,8 @@
 (defun bound-p (var) (not (eq (var-binding var) +unbound+)))
 
 (defgeneric prolog-equal (x y)
-  (:documentation "Generic equality operator for prolog unification. Specialize 
-this for new types that will be stored in the db.")
+  (:documentation "Generic equality operator for prolog unification.
+ Specialize this for new types that will be stored in the db.")
   (:method ((x number) (y number)) (= x y))
   (:method ((x string) (y string)) (string= x y))
   (:method ((x character) (y character)) (char= x y))
@@ -104,7 +104,7 @@ this for new types that will be stored in the db.")
 (defun compile-call (predicate arity args cont)
   "Compile a call to a prolog predicate."
   (let ((functor (make-functor-symbol predicate arity)))
-    `(let ((func (or (get-functor-fn ',functor) 
+    `(let ((func (or (get-functor-fn ',functor)
 		     (gethash ',functor *prolog-global-functors*))))
        (when *prolog-trace*
 	 (format t "TRACE: ~A/~A~A~%" ',predicate ',arity ',args))
@@ -208,7 +208,7 @@ this for new types that will be stored in the db.")
 (defun anonymous-variables-in (tree)
   "Return a list of all variables that occur only once in tree."
   (values (anon-vars-in tree nil nil)))
- 
+
 (defun anon-vars-in (tree seen-once seen-more)
   "Walk the data structure TREE, returning a list of variabless
    seen once, and a list of variables seen more than once."
@@ -344,7 +344,7 @@ this for new types that will be stored in the db.")
 (defun compile-clause (parms clause cont)
   "Transform away the head, and compile the resulting body."
   (let ((body
-	 (bind-unbound-vars       
+	 (bind-unbound-vars
 	  parms
 	  (compile-body
 	   (nconc
@@ -352,7 +352,7 @@ this for new types that will be stored in the db.")
 	    (clause-body clause))
 	   cont
 	   (mapcar #'self-cons parms)))))
-    (when *prolog-trace* 
+    (when *prolog-trace*
       (format t "TRACE: ~A BODY:~% ~A~%" (clause-head clause) body))
     body))
 
@@ -364,8 +364,8 @@ this for new types that will be stored in the db.")
     (let* ((arity (relation-arity (clause-head clause)))
 	   (functor (make-functor-symbol functor-name arity)))
       (if (gethash functor *prolog-global-functors*)
-	  (error 'prolog-error 
-		 :reason 
+	  (error 'prolog-error
+		 :reason
 		 (format nil "Cannot override default functor ~A." functor))
 	  (let ((f (lookup-functor functor)))
 	    (if (functor? f)
@@ -417,16 +417,19 @@ this for new types that will be stored in the db.")
 		    #'(lambda (&rest args) (declare (ignore args)) nil))))
 
 (defun compile-functor (functor arity clauses)
-  "Compile all the clauses for a given symbol/arity into a single LISP function."
-  (let ((*functor* (functor-name functor)) 
+  "Compile all the clauses for a given symbol/arity into a single LISP
+ function."
+  (let ((*functor* (functor-name functor))
 	(parameters (make-parameters arity)))
     (let ((func `#'(lambda (,@parameters cont)
 		     (block ,*functor*
 		       .,(maybe-add-undo-bindings
-			  (mapcar #'(lambda (clause)
-				      (compile-clause parameters clause 'cont))
-				  clauses))))))
-      (when *prolog-trace* (format t "TRACE: Adding ~A to ~A~%" func *functor*))
+			  (mapcar
+                           #'(lambda (clause)
+                               (compile-clause parameters clause 'cont))
+                           clauses))))))
+      (when *prolog-trace*
+        (format t "TRACE: Adding ~A to ~A~%" func *functor*))
       (set-functor-fn *functor* (eval func)))))
 
 (defun compile-body (body cont bindings)
@@ -434,25 +437,27 @@ this for new types that will be stored in the db.")
   (cond
     ((null body)
      `(funcall ,cont))
-    ((or (eq (first body) '!) (eq (first body) 'cut) (equalp (first body) "cut"))
+    ((or (eq (first body) '!) (eq (first body) 'cut)
+         (equalp (first body) "cut"))
      `(progn ,(compile-body (rest body) cont bindings)
              (return-from ,*functor* nil)))
     (t (let* ((goal (first body))
               (macro (prolog-compiler-macro (predicate goal)))
-              (macro-val (if macro 
+              (macro-val (if macro
 			     (funcall macro goal (rest body) cont bindings))))
 	 (if (and macro (not (eq macro-val :pass)))
 	     macro-val
-	     (compile-call (predicate goal) (relation-arity goal)
-			   (mapcar #'(lambda (arg)
-				       (compile-arg arg bindings))
-				   (args goal))
-			   (if (null (rest body))
-			       cont
-			       `#'(lambda ()
-				    ,(compile-body 
-				      (rest body) cont
-				      (bind-new-variables bindings goal))))))))))
+	     (compile-call
+              (predicate goal) (relation-arity goal)
+              (mapcar #'(lambda (arg)
+                          (compile-arg arg bindings))
+                      (args goal))
+              (if (null (rest body))
+                  cont
+                  `#'(lambda ()
+                       ,(compile-body
+                         (rest body) cont
+                         (bind-new-variables bindings goal))))))))))
 
 (defun replace-?-vars (exp)
   "Replace any ? within exp with a var of the form ?123."
@@ -471,7 +476,7 @@ this for new types that will be stored in the db.")
   `(let ((count 0))
      (with-graph-transaction (*store*)
        (dolist (triple ',triples)
-	 (add-triple (first triple) (second triple) (third triple) 
+	 (add-triple (first triple) (second triple) (third triple)
 		     :graph (or (fourth triple) *graph*))
 	 (incf count))
        (do-indexing))
@@ -493,34 +498,31 @@ this for new types that will be stored in the db.")
 	    (functor (make-functor :name *functor* :clauses nil)))
        (unwind-protect
 	    (catch 'top-level-prove
-	      (let ((func #'(lambda (cont) 
+	      (let ((func #'(lambda (cont)
 			      (handler-case
 				  (block ,*functor*
 				    .,(maybe-add-undo-bindings
-				       (mapcar 
+				       (mapcar
 					#'(lambda (clause)
 					    (compile-clause nil clause 'cont))
 					`(((,top-level-query)
 					   ,@goals
-					   (show-prolog-vars 
+					   (show-prolog-vars
 					    ,(mapcar #'symbol-name vars)
 					    ,vars))))))
 				(undefined-function (condition)
 				  (error 'prolog-error :reason condition))))))
 		(set-functor-fn *functor* func)
 		(funcall func #'prolog-ignore)
-		;;(setf (gethash ',*functor* *user-functors*) func)
-		;;(funcall (gethash ',*functor* *user-functors*) #'prolog-ignore)
 		(format t "~&No.~%")))
-	 ;;(remhash ',*functor* *user-functors*))
 	 (delete-functor functor))
        (values))))
 
 (defmacro select (vars &rest goals)
   "Select specific variables as a list of lists using the following form:
  (select (?x ?y) (is-a ?x ?y)) could return ((Joe Human) (Spot Dog)) and
- (select ((:entity ?x) (:species ?y)) could return 
- (((:entity Joe) (:species Human)) 
+ (select ((:entity ?x) (:species ?y)) could return
+ (((:entity Joe) (:species Human))
   ((:entity Spot)(:species Dog)))"
   (let* ((top-level-query (gensym "PROVE"))
 	 (goals (replace-?-vars goals))
@@ -531,8 +533,8 @@ this for new types that will be stored in the db.")
 	    (*select-list* nil)
 	    (functor (make-functor :name *functor* :clauses nil)))
        (unwind-protect
-	    (let ((func 
-		   #'(lambda (cont) 
+	    (let ((func
+		   #'(lambda (cont)
 		       (handler-case
 			   (block ,*functor*
 			     .,(maybe-add-undo-bindings
@@ -540,8 +542,8 @@ this for new types that will be stored in the db.")
 					    (compile-clause nil clause 'cont))
 					`(((,top-level-query)
 					   ,@goals
-					   (select 
-					    ,(mapcar 
+					   (select
+					    ,(mapcar
 					      #'(lambda (var)
 						  (typecase var
 						    (symbol (symbol-name var))
@@ -567,8 +569,8 @@ this for new types that will be stored in the db.")
   `(select () ,@goals))
 
 (defmacro map-query (fn query &key collect?)
-  "Maps fn over the results of query. collect? will return a list of the results
-of each application of fn."
+  "Maps fn over the results of query. collect? will return a list of the
+ results of each application of fn."
   (with-gensyms (result)
     (if collect?
 	`(mapcar #'(lambda (,result)

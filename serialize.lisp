@@ -1,7 +1,7 @@
 (in-package #:vivace-graph-v2)
 
-;; The foundation of the serialization code comes from Sonja Keene's "Object-Oriented 
-;; Programming in Common Lisp."  Thanks Sonja!
+;; The foundation of the serialization code comes from Sonja Keene's
+;; "Object-Oriented Programming in Common Lisp."  Thanks Sonja!
 
 (defgeneric serialize (thing stream))
 (defgeneric serialize-action (action stream &rest args))
@@ -20,7 +20,10 @@
       (setq int (ash int -8)))))
 
 (defmethod serialize ((int integer) (stream stream))
-  "Encodes integers between (- (1- (expt 2 (* 8 255)))) and (1- (expt 2 (* 8 255)))"
+  "Encodes integers between
+(- (1- (expt 2 (* 8 255))))
+ and
+(1- (expt 2 (* 8 255)))"
   (if (minusp int)
       (progn
 	(write-byte +negative-integer+ stream)
@@ -49,7 +52,7 @@
 (defmethod serialize ((string string) (stream stream))
   ;; FIXME: what is the right length to enable compression?
   (if (and *compression-enabled?* (> (length string) 20))
-      (let* ((comp (salza2:compress-data 
+      (let* ((comp (salza2:compress-data
 		    (babel:string-to-octets string) 'salza2:zlib-compressor))
 	     (length (length comp)))
 	(write-byte +compressed-string+ stream)
@@ -92,19 +95,19 @@
 
 (defun serialize-triple-help (triple stream)
   (let ((graph-pkg (find-package 'graph-words)))
-    (if (and (symbolp (subject triple)) 
+    (if (and (symbolp (subject triple))
 	     (eq (symbol-package (subject triple)) graph-pkg))
 	(serialize (symbol-name (subject triple)) stream)
 	(serialize (subject triple) stream))
-    (if (and (symbolp (predicate triple)) 
+    (if (and (symbolp (predicate triple))
 	     (eq (symbol-package (predicate triple)) graph-pkg))
 	(serialize (symbol-name (predicate triple)) stream)
 	(serialize (predicate triple) stream))
-    (if (and (symbolp (object triple)) 
+    (if (and (symbolp (object triple))
 	     (eq (symbol-package (object triple)) graph-pkg))
 	(serialize (symbol-name (object triple)) stream)
 	(serialize (object triple) stream))
-    (if (and (symbolp (graph triple)) 
+    (if (and (symbolp (graph triple))
 	     (eq (symbol-package (graph triple)) graph-pkg))
 	(serialize (symbol-name (graph triple)) stream)
 	(serialize (graph triple) stream))
@@ -119,16 +122,19 @@
 (defmethod serialize-action ((action (eql :add-triple)) stream &rest args)
   (logger :debug "Serialize-action ~A: ~A~%" action args)
   (write-byte +add-triple+ stream)
-  (if (triple? (first args))  
-      ;; We generally want to avoid this, as the triple could change between requested
-      ;; serialization and actual serialization.
+  (if (triple? (first args))
+      ;; We generally want to avoid this, as the triple could change between
+      ;; requested serialization and actual serialization.
       (serialize-triple-help (first args) stream)
-      (let ((subject (nth 0 args)) (predicate (nth 1 args)) (object (nth 2 args))
+      (let ((subject (nth 0 args))
+            (predicate (nth 1 args))
+            (object (nth 2 args))
 	    (graph (nth 3 args)) (graph-pkg (find-package 'graph-words)))
 	(if (and (symbolp subject) (eq (symbol-package subject) graph-pkg))
 	    (serialize (symbol-name subject) stream)
 	    (serialize subject stream))
-	(if (and (symbolp predicate) (eq (symbol-package predicate) graph-pkg))
+	(if (and (symbolp predicate)
+                 (eq (symbol-package predicate) graph-pkg))
 	    (serialize (symbol-name predicate) stream)
 	    (serialize predicate stream))
 	(if (and (symbolp object) (eq (symbol-package object) graph-pkg))
@@ -146,7 +152,8 @@
   (serialize (nth 0 args) stream)  ;; id
   (serialize (nth 1 args) stream)) ;; timestamp
 
-(defmethod serialize-action ((action (eql :undelete-triple)) stream &rest args)
+(defmethod serialize-action ((action (eql :undelete-triple)) stream &rest
+                             args)
   (write-byte +undelete-triple+ stream)
   (serialize (nth 0 args) stream)) ;; id
 
@@ -158,10 +165,10 @@
 (defmethod serialize-action ((action (eql :transaction)) stream &rest args)
   (write-byte +transaction+ stream)
   (let ((tx (nth 0 args)))
-    ;;(serialize (length (tx-queue tx)) stream)  
+    ;;(serialize (length (tx-queue tx)) stream)
     (dolist (a (reverse (tx-queue tx)))
       (logger :info "TX: serializing ~A / ~A~%" (first a) (rest a))
-      (apply #'serialize-action 
+      (apply #'serialize-action
 	     (nconc (list (first a) stream) (rest a))))))
 
 (defun test-serializer (file)

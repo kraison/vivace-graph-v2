@@ -9,7 +9,8 @@
    (log-mailbox :initarg :log-mailbox :accessor log-mailbox)
    (index-queue :initarg :index-queue :accessor index-queue)
    (delete-queue :initarg :delete-queue :accessor delete-queue)
-   (indexed-predicates :initarg :indexed-predicates :accessor indexed-predicates)
+   (indexed-predicates :initarg :indexed-predicates
+                       :accessor indexed-predicates)
    (templates :initarg :templates :accessor templates)
    (location :initarg :location :accessor location)
    (lock-pool :initarg :lock-pool :accessor lock-pool)
@@ -31,8 +32,8 @@
 
 (defun list-indexed-predicates (&optional (store *store*))
   (let ((result nil))
-    (maphash #'(lambda (k v) 
-		 (when v (push k result))) 
+    (maphash #'(lambda (k v)
+		 (when v (push k result)))
 	     (indexed-predicates store))
     (sort result #'string>)))
 
@@ -44,15 +45,17 @@
 			:main-idx (make-hierarchical-index)
 			:lock-pool (make-lock-pool num-locks)
 			:locks (make-hash-table :synchronized t :test 'equal)
-			:text-idx (make-skip-list :key-equal 'equalp
-						  :value-equal 'uuid:uuid-eql
-						  :duplicates-allowed? t)
+                        :text-idx (make-instance 'montezuma:index
+                                                 :path
+                                                 (format nil "~A/text-idx"
+                                                         location))
 			:log-mailbox (sb-concurrency:make-mailbox)
 			:index-queue (sb-concurrency:make-queue)
 			:delete-queue (sb-concurrency:make-queue)
-			:templates (make-hash-table :synchronized t :test 'eql)
-			:indexed-predicates (make-hash-table :synchronized t 
-							     :test 'eql))))
+			:templates (make-hash-table :synchronized t
+                                                    :test 'eql)
+			:indexed-predicates (make-hash-table :synchronized t
+							     :test 'equalp))))
     (add-to-index (main-idx store) (make-uuid-table :synchronized t) :id-idx)
     (setf (logger-thread store) (start-logger store))
     store))
@@ -60,7 +63,7 @@
 (defun make-local-triple-store (name location)
   (make-fresh-store name location))
 
-(defun create-triple-store (&key name if-exists? location host port 
+(defun create-triple-store (&key name if-exists? location host port
 			    user password)
   (declare (ignore if-exists?))
   (setq *graph* (or name location (format nil "~A:~A" host port)))
@@ -87,6 +90,7 @@
   (remhash (store-name store) *store-table*)
   (if (eql store *store*) (setq *store* nil))
   (stop-logger store)
+  (montezuma:close (text-idx store))
   nil)
 
 (defun open-triple-store (&key name location host port user password)
@@ -105,7 +109,7 @@
   (sb-concurrency:send-message (log-mailbox store) :shutdown-and-clear)
   (join-thread (logger-thread store))
   (make-fresh-store *graph* (location store)))
-  
+
 (defun use-graph (name)
   (setq *graph* name))
 
@@ -116,22 +120,22 @@
   (sb-concurrency:enqueue thing (delete-queue store)))
 
 (defun intern-spog (s p o g)
-  (values 
+  (values
    (if (stringp s) (intern s :graph-words) s)
    (if (stringp p) (intern p :graph-words) p)
    (if (stringp o) (intern o :graph-words) o)
    (if (stringp g) (intern g :graph-words) g)))
 
-(defun lock-pattern (subject predicate object graph &key (kind :write) 
+(defun lock-pattern (subject predicate object graph &key (kind :write)
 		     (store *store*))
-  (multiple-value-bind (subject predicate object graph) 
+  (multiple-value-bind (subject predicate object graph)
       (intern-spog subject predicate object graph)
     (let ((lock nil) (pattern (list subject predicate object graph)))
       (logger :info "~A: Locking pattern ~A~%" *current-transaction* pattern)
       (sb-ext:with-locked-hash-table ((locks store))
-	(setq lock 
+	(setq lock
 	      (or (gethash pattern (locks store))
-		  (setf (gethash pattern (locks store)) 
+		  (setf (gethash pattern (locks store))
 			(get-pool-lock (lock-pool store))))))
       (if (rw-lock? lock)
 	  (if (eq kind :write)
@@ -140,15 +144,16 @@
 	  (error "Unable to get lock for ~A" pattern)))))
 
 (defun lock-triple (triple &key (kind :write) (store *store*))
-  (lock-pattern (triple-subject triple) 
-		(triple-predicate triple) 
-		(triple-object triple) 
+  (lock-pattern (triple-subject triple)
+		(triple-predicate triple)
+		(triple-object triple)
 		(triple-graph triple)
 		:kind kind
 		:store store))
 
-(defun unlock-pattern (subject predicate object graph &key kind (store *store*))
-  (multiple-value-bind (subject predicate object graph) 
+(defun unlock-pattern (subject predicate object graph &key kind
+                       (store *store*))
+  (multiple-value-bind (subject predicate object graph)
       (intern-spog subject predicate object graph)
     (let ((pattern (list subject predicate object graph)))
       (sb-ext:with-locked-hash-table ((locks store))
@@ -163,15 +168,16 @@
 		(release-pool-lock (lock-pool store) lock)))))))))
 
 (defun unlock-triple (triple &key kind (store *store*))
-  (funcall #'unlock-pattern 
-	   (triple-subject triple) 
-	   (triple-predicate triple) 
-	   (triple-object triple) 
+  (funcall #'unlock-pattern
+	   (triple-subject triple)
+	   (triple-predicate triple)
+	   (triple-object triple)
 	   (triple-graph triple)
 	   :kind kind
 	   :store store))
 
-(defmacro with-locked-pattern ((subject predicate object graph kind) &body body)
+(defmacro with-locked-pattern ((subject predicate object graph kind)
+                               &body body)
   (with-gensyms (s p o g k)
     `(let ((,s ,subject) (,p ,predicate) (,o ,object) (,g ,graph) (,k ,kind))
        (unwind-protect

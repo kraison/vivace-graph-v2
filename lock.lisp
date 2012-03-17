@@ -1,7 +1,8 @@
 (in-package #:vivace-graph-v2)
 
 (defun print-rw-lock (lock stream depth)
-  (format stream "#<RW-LOCK, W: ~A, R: ~A>" (lock-writer lock) (lock-readers lock)))
+  (format stream "#<RW-LOCK, W: ~A, R: ~A>"
+          (lock-writer lock) (lock-readers lock)))
 
 (defstruct (rw-lock
 	     (:conc-name lock-)
@@ -68,7 +69,8 @@
     (if (and (next-in-queue? rw-lock sb-thread:*current-thread*)
 	     (eq (lock-writer rw-lock) sb-thread:*current-thread*))
 	(progn
-	  (enqueue-front (lock-writer-queue rw-lock) sb-thread:*current-thread*)
+	  (enqueue-front (lock-writer-queue rw-lock)
+                         sb-thread:*current-thread*)
 	  (return-from acquire-write-lock rw-lock))
 	(enqueue (lock-writer-queue rw-lock) sb-thread:*current-thread*)))
   (loop for tries from 0 to max-tries do
@@ -78,17 +80,20 @@
 	     (handler-case
 		 (sb-thread:with-recursive-lock ((lock-lock rw-lock))
 		   (if (and (null (lock-writer rw-lock))
-			    (next-in-queue? rw-lock sb-thread:*current-thread*))
+			    (next-in-queue? rw-lock
+                                            sb-thread:*current-thread*))
 		       (progn
-			 (setf (lock-writer rw-lock) sb-thread:*current-thread*)
+			 (setf (lock-writer rw-lock)
+                               sb-thread:*current-thread*)
 			 (when reading-p
 			   (decf (lock-readers rw-lock)))
 			 (unless (eql 0 (lock-readers rw-lock))
 			   (setf wait-p t)))
-		       (sb-thread:condition-wait 
+		       (sb-thread:condition-wait
 			(lock-waitqueue rw-lock) (lock-lock rw-lock))))
 	       (error (c)
-		 (format t "Got error ~A while acquiring write lock ~A" c rw-lock)))
+		 (format t "Got error ~A while acquiring write lock ~A"
+                         c rw-lock)))
 	     (when wait-p
 	       (sb-thread:wait-on-semaphore (lock-semaphore rw-lock)))))))
 
@@ -146,7 +151,7 @@
 (defun test-rw-locks ()
   (let ((lock (make-rw-lock)))
     (make-thread
-     #'(lambda () (with-write-lock (lock) 
+     #'(lambda () (with-write-lock (lock)
 		    (format t "1 got write lock.  Sleeping.~%")
 		    (sleep 5)
 		    (with-write-lock (lock)
@@ -158,12 +163,12 @@
 			(format t "1 releasing recursive write lock.~%"))
 		      (format t "1 releasing recursive write lock.~%"))
 		    (format t "1 releasing write lock.~%"))))
-    (make-thread 
+    (make-thread
      #'(lambda () (with-read-lock (lock) (format t "2 got read lock~%") (sleep 5))))
-    (make-thread 
+    (make-thread
      #'(lambda () (with-read-lock (lock) (format t "3 got read lock~%") (sleep 5))))
     (make-thread
-     #'(lambda () (with-write-lock (lock) 
+     #'(lambda () (with-write-lock (lock)
 		    (format t "4 got write lock.  Sleeping.~%")
 		    (sleep 5)
 		    (with-write-lock (lock)
@@ -176,12 +181,12 @@
 		      (format t "4 releasing recursive write lock.~%"))
 		    (format t "4 releasing write lock.~%"))))
     (make-thread
-     #'(lambda () (with-write-lock (lock) 
+     #'(lambda () (with-write-lock (lock)
 		    (format t "5 got write lock.  Sleeping.~%")
 		    (sleep 5)
 		    (format t "5 releasing write lock.~%"))))
-    (make-thread 
+    (make-thread
      #'(lambda () (with-read-lock (lock) (format t "6 got read lock~%") (sleep 5))))
-    (make-thread 
+    (make-thread
      #'(lambda () (with-read-lock (lock) (format t "7 got read lock~%") (sleep 5))))))
 |#
