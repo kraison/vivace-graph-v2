@@ -24,7 +24,13 @@ implicitly more important / required than some other requirement-Z.
 ;;; ==============================
 The major things that need to be done to satisfy my personal requirements:
 
-*  Stabilize transaction logging.
+*   Fix lexical env issues between Prolog and Lisp.
+    Currently, importing a Lisp variable into Prolog requires that it be
+    declared SPECIAL.  This is because the Prolog implementation is based on
+    Norvig's PAIP, which uses CL:EVAL.  A better solution should be found.
+
+*   While triples are thread safe, Prolog may or may not be.
+    This should be investigated and fixed where necessary.
 
 *   Remove the SBCL-specific code that litters the project.
 
@@ -34,6 +40,8 @@ The major things that need to be done to satisfy my personal requirements:
 
     I would like to add a second option where, as in a standard database, data
     can be stored in a disk-based structure. 
+
+     - memory mapped linear hash tables. KTR: *** This is my preferred option ***
 
      - B+Trees  
 
@@ -46,17 +54,6 @@ The major things that need to be done to satisfy my personal requirements:
 
        I was considering something like B-tries, as described in this paper:
         (URL `http://www.naskitis.com/naskitis-vldbj09.pdf').
-
-*   Spend some time on the text indexing piece.
-    It currently uses my cl-skip-list, but should be moved into a B-tree.
-
-*   While triples are thread safe, Prolog may or may not be.
-    This should be investigated and fixed where necessary.
-
-*   Fix lexical env issues between Prolog and Lisp.
-    Currently, importing a Lisp variable into Prolog requires that it be
-    declared SPECIAL.  This is because the Prolog implementation is based on
-    Norvig's PAIP, which uses CL:EVAL.  A better solution should be found.
 
 *   Add reciprocal reasoning. 
      (has-child implies has-parent)
@@ -75,6 +72,16 @@ The major things that need to be done to satisfy my personal requirements:
 
 *   Implement a protocol for submitting queries over the network.
 
+
+
+COMPLETED ITEMS:
+
+*   Spend some time on the text indexing piece.
+    It currently uses my cl-skip-list, but should be moved into a B-tree.
+    KTR: *** I recently integrated Montezuma for this purpose.  It may need some cleaning up. ***
+
+*   Stabilize transaction logging. 
+    KTR: *** This is done.  Transaction logging has been working quite well for a long while. ***
 
 
 ;;; ==============================

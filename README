@@ -6,12 +6,11 @@ it to behave consistently from one check-in to another.
 The goal is to build a fast, robust, distributed graph database with optional
 RDF semantics built-in.  The primary query language is Prolog (based on PAIP),
 but I have plans to add Javascript and maybe Sparql at a later date.
-At the moment, persistence is achieved via a call to (dump-triples);  this is going
-to change very soon.  I am working on a native SBCL memory mapped persistence
-library that will give me some variation on btrees and hashes.  When this is
-complete, triples wil be persistent by default.
+At the moment, persistence is achieved via transaction logging and replay.
+I am also working on a native SBCL memory mapped persistence
+library that will give me some variation on linear hash tables.
 
-The code checked-in as of 2010/11/08 works fairly well, but should be
+The code checked-in as of 2012/05/06 works fairly well, but should be
 considered alpha quality.  In order to get it working, you will need the
 following:
 
@@ -29,6 +28,7 @@ date-calc: http://common-lisp.net/project/cl-date-calc/
 py-configparser: http://common-lisp.net/project/py-configparser/
 js: http://github.com/akapav/js
 split-sequence: http://www.cliki.net/SPLIT-SEQUENCE
+Montezuma
 
 
 To get you started:
@@ -52,10 +52,6 @@ To get you started:
 
 (get-triples-list :search-string "programming")
 
-;; Range query;  this stuff may be broken at this stage.
-;; i will focus on it again very soon
-;;(select-flat (?object) (q- "Kevin" "likes" (?object "a" "z")))
-;;
 (get-triples-list :s "Kevin")
 (get-triples-list :p "is-a")
 (close-triple-store :store *store*)
