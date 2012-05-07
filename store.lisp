@@ -38,37 +38,38 @@
     (sort result #'string>)))
 
 (defun make-fresh-store (name location &key (num-locks 10000))
-  (let ((store
-	 (make-instance 'local-triple-store
- 			:name name
-			:location location
-			:main-idx (make-hierarchical-index)
-			:lock-pool (make-lock-pool num-locks)
-			:locks (make-hash-table :synchronized t :test 'equal)
-                        :text-idx (make-instance 'montezuma:index
-                                                 :path
-                                                 (format nil "~A/text-idx"
-                                                         location))
-			:log-mailbox (sb-concurrency:make-mailbox)
-			:index-queue (sb-concurrency:make-queue)
-			:delete-queue (sb-concurrency:make-queue)
-			:templates (make-hash-table :synchronized t
-                                                    :test 'eql)
-			:indexed-predicates (make-hash-table :synchronized t
-							     :test 'equalp))))
+  (let* ((text-dir (merge-pathnames (format nil "~A/text-idx/" location)))
+         (store
+          (make-instance 'local-triple-store
+                         :name name
+                         :location location
+                         :main-idx (make-hierarchical-index)
+                         :lock-pool (make-lock-pool num-locks)
+                         :locks (make-hash-table :synchronized t :test 'equal)
+                         :text-idx (make-instance 'montezuma:index
+                                                  :path text-dir)
+                         :log-mailbox (sb-concurrency:make-mailbox)
+                         :index-queue (sb-concurrency:make-queue)
+                         :delete-queue (sb-concurrency:make-queue)
+                         :templates (make-hash-table :synchronized t
+                                                     :test 'eql)
+                         :indexed-predicates (make-hash-table
+                                              :synchronized t
+                                              :test 'equalp))))
     (add-to-index (main-idx store) (make-uuid-table :synchronized t) :id-idx)
     (setf (logger-thread store) (start-logger store))
     store))
 
-(defun make-local-triple-store (name location)
-  (make-fresh-store name location))
+(defun make-local-triple-store (name location &key (num-locks 10000))
+  (make-fresh-store name location :num-locks num-locks))
 
 (defun create-triple-store (&key name if-exists? location host port
-			    user password)
+			    user password num-locks)
   (declare (ignore if-exists?))
   (setq *graph* (or name location (format nil "~A:~A" host port)))
   (if location
-      (let ((store (make-local-triple-store *graph* location)))
+      (let ((store (make-local-triple-store
+                    *graph* location :num-locks num-locks)))
 	(if (triple-store? store)
 	    (setf (gethash (store-name store) *store-table*) store
 		  *store* store)
@@ -93,7 +94,7 @@
   (montezuma:close (text-idx store))
   nil)
 
-(defun open-triple-store (&key name location host port user password)
+(defun open-triple-store (&key name location host port user password num-locks)
   (let ((store (create-triple-store :name name
 				    :location location
 				    :if-exists? :open
@@ -101,7 +102,8 @@
 				    :port port
 				    :user user
 				    :port port
-				    :password password)))
+				    :password password
+                                    :num-locks num-locks)))
     (restore-triple-store store)
     (setq *store* store)))
 
@@ -131,7 +133,7 @@
   (multiple-value-bind (subject predicate object graph)
       (intern-spog subject predicate object graph)
     (let ((lock nil) (pattern (list subject predicate object graph)))
-      (logger :info "~A: Locking pattern ~A~%" *current-transaction* pattern)
+      (logger :debug "~A: Locking pattern ~A~%" *current-transaction* pattern)
       (sb-ext:with-locked-hash-table ((locks store))
 	(setq lock
 	      (or (gethash pattern (locks store))

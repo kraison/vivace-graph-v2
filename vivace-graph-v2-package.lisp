@@ -1,9 +1,9 @@
 (in-package #:cl-user)
 
 (defpackage #:vivace-graph-v2
-  (:use #:cl 
-	#:cffi 
-	#:bordeaux-threads 
+  (:use #:cl
+	#:cffi
+	#:bordeaux-threads
 	#:cl-skip-list
 	#:local-time)
   (:export #:*store*
@@ -11,6 +11,7 @@
 	   #:open-triple-store
 	   #:close-triple-store
 	   #:clear-triple-store
+           #:snapshot
 	   #:*store*
 	   #:*graph*
 	   #:use-graph

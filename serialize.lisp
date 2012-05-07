@@ -167,7 +167,7 @@
   (let ((tx (nth 0 args)))
     ;;(serialize (length (tx-queue tx)) stream)
     (dolist (a (reverse (tx-queue tx)))
-      (logger :info "TX: serializing ~A / ~A~%" (first a) (rest a))
+      (logger :debug "TX: serializing ~A / ~A~%" (first a) (rest a))
       (apply #'serialize-action
 	     (nconc (list (first a) stream) (rest a))))))
 

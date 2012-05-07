@@ -102,11 +102,11 @@
       (maphash #'(lambda (id triple)
 		   (declare (ignore id))
 		   (when (persistent? triple)
-		     (logger :info "serializing ~A: ~A"
+		     (logger :debug "serializing ~A: ~A"
 			     (triple-id triple) triple)
 		     (serialize triple stream)))
 	       (gethash :id-idx (index-table (main-idx store)))))
-    (logger :info "Recording null byte")
+    (logger :debug "Recording null byte")
     (write-byte 0 stream)
     (force-output stream)))
 
@@ -145,13 +145,13 @@
 
 (defun dump-transaction (stream tx)
   (when (and (transaction? tx) (tx-queue tx))
-    (logger :info "Dumping tx ~A to ~A" tx stream)
+    (logger :debug "Dumping tx ~A to ~A" tx stream)
     (serialize-action :transaction stream tx)
     (force-output stream)))
 
 (defun record-tx (tx store)
   (when (and (transaction? tx) (tx-queue tx))
-    (logger :info "Recording tx ~A~%" (reverse (tx-queue tx)))
+    (logger :debug "Recording tx ~A~%" (reverse (tx-queue tx)))
     (handler-case
 	(with-open-file (stream
 			 (format nil "~A/tx-~A-~A" (location store)
@@ -176,7 +176,7 @@
 	 (loop
 	    (handler-case
 		(let ((msg (sb-concurrency:receive-message mailbox)))
-		  (logger :info "tx-log thread received message ~A" msg)
+		  (logger :debug "tx-log thread received message ~A" msg)
 		  (typecase msg
 		    (transaction (record-tx msg store))
 		    (keyword
@@ -187,12 +187,12 @@
 			(set-clean store)
 			(quit))
 		       (:shutdown
-			(logger :info "Processing all pending messages.")
+			(logger :debug "Processing all pending messages.")
 			(dolist
 			    (msg
 			      (sb-concurrency:receive-pending-messages
                                mailbox))
-			  (logger :info "Processing message ~A" msg)
+			  (logger :debug "Processing message ~A" msg)
 			  (when (transaction? msg)
 			    (record-tx msg store)))
 			;;(logger :info "Snapshotting the store.")
@@ -204,9 +204,9 @@
 		       (:snapshot
 			(logger :info "Snapshot commencing")
 			(snapshot store)
-			(logger :info "Snapshot complete. Set store CLEAN")
+			(logger :debug "Snapshot complete. Set store CLEAN")
 			(set-clean store)
-			(logger :info "Store set CLEAN")
+			(logger :debug "Store set CLEAN")
 			(setq last-snapshot (gettimeofday))
 			(logger :info "Snapshot finished"))
 		       (otherwise
@@ -246,18 +246,18 @@
                      "Unable to execute transaction. Too may retries (~A)."
 		     retries))
       (let ((*current-transaction* (make-transaction :store store)))
-	(logger :info "~A execute-tx starting" *current-transaction*)
+	(logger :debug "~A execute-tx starting" *current-transaction*)
 	(handler-case
 	    (sb-ext:with-timeout timeout
 	      (funcall fn))
 	  (sb-ext:timeout (condition)
-	    (logger :info "~A execute-tx timeout ~A"
+	    (logger :debug "~A execute-tx timeout ~A"
 		    *current-transaction* condition)
 	    (rollback-tx *current-transaction*)
 	    (release-all-locks *current-transaction*)
 	    (execute-tx store fn timeout max-tries (1+ retries)))
 	  (error (condition)
-	    (logger :info "~A execute-tx error ~A"
+	    (logger :debug "~A execute-tx error ~A"
                     *current-transaction* condition)
 	    (rollback-tx *current-transaction*)
 	    (release-all-locks *current-transaction*)
@@ -266,7 +266,7 @@
 		   (format nil "Unable to execute transaction: ~A"
                            condition)))
 	  (:no-error (result)
-	    (logger :info "~A execute-tx success (~A)"
+	    (logger :debug "~A execute-tx success (~A)"
 		    *current-transaction* result)
 	    (when (tx-queue *current-transaction*)
 	      (sb-concurrency:send-message
